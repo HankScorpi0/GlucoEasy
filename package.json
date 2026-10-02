@@ -1,5 +1,5 @@
 {
-  "name": "tinyscout-lite",
+  "name": "glucoeasy",
   "version": "0.1.0",
   "private": true,
   "description": "Minimal Nightscout-compatible recovery server for CGM readings on Cloudflare Workers.",

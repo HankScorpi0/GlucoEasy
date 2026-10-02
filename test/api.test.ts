@@ -11,7 +11,7 @@ async function initializeSetup(): Promise<{ secret: string; cookie: string }> {
   expect(response.status).toBe(200);
 
   const cookie = response.headers.get("Set-Cookie");
-  expect(cookie).toContain("tinyscout_setup=");
+  expect(cookie).toContain("glucoeasy_setup=");
 
   const html = await response.text();
   const secretMatch = html.match(/<code>([a-z2-9]{6})<\/code>/);
@@ -463,7 +463,7 @@ describe("api", () => {
     const setupResponse = await SELF.fetch("https://example.com/es/health");
     expect(setupResponse.status).toBe(200);
     const setupCookie = setupResponse.headers.get("Set-Cookie");
-    expect(setupCookie).toContain("tinyscout_setup=");
+    expect(setupCookie).toContain("glucoeasy_setup=");
     const setupHtml = await setupResponse.text();
     expect(setupHtml).toContain('<html lang="es">');
     expect(setupHtml).toContain("Configuracion completada");

@@ -191,11 +191,11 @@ function getCookie(request: Request, name: string): string | null {
 }
 
 function createSetupCookie(token: string): string {
-  return `tinyscout_setup=${token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=3600`;
+  return `glucoeasy_setup=${token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=3600`;
 }
 
 function clearSetupCookie(): string {
-  return "tinyscout_setup=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0";
+  return "glucoeasy_setup=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0";
 }
 
 async function resolveConfiguredSecret(env: Env): Promise<string | null> {
@@ -259,7 +259,7 @@ export default {
 
     if (request.method === "POST" && (url.pathname === "/setup/acknowledge" || url.pathname === "/es/setup/acknowledge")) {
       const setupState = await getSetupState(env);
-      const cookieToken = getCookie(request, "tinyscout_setup");
+      const cookieToken = getCookie(request, "glucoeasy_setup");
       if (!setupState?.revealToken || !cookieToken || cookieToken !== setupState.revealToken) {
         return htmlResponse(
           renderHealthPage({
@@ -287,7 +287,7 @@ export default {
 
     if (healthLocale && request.method === "GET" && (url.pathname === "/health" || url.pathname === "/es/health")) {
       let setupState = await getSetupState(env);
-      const setupCookie = getCookie(request, "tinyscout_setup");
+      const setupCookie = getCookie(request, "glucoeasy_setup");
       let setCookieHeader: string | null = null;
 
       if (!env.API_SECRET && !setupState) {
