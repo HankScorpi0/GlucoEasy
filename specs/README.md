@@ -11,6 +11,6 @@ For each future change:
 5. Use `$speckit-implement` and run the required checks for the change.
 6. Review outcomes and update the affected baseline contracts when behavior changes. Use `$speckit-converge` when comparing implementation with a feature's spec, plan and tasks.
 
-Do not create a reconstruction plan or mark retrospective implementation tasks as completed merely because the baseline exists. A plan for this baseline is useful only when its scope explicitly covers remaining gaps or verification work. `.specify/feature.json` is the local active-feature pointer; new specifications update it automatically. Specifications use the default `specs/` directory, independently of branch naming.
+The [retrospective plan](001-baseline-backup-service/plan.md) completes the baseline with its existing stack, architecture, data model and validation guide. It does not reconstruct the service or mark historical tasks as completed. Pending corrections require their own scope and acceptance criteria before generating tasks. `.specify/feature.json` is the local active-feature pointer; new specifications update it automatically. Specifications use the default `specs/` directory, independently of branch naming.
 
 Versión española: [README.es.md](README.es.md).

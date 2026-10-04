@@ -11,6 +11,6 @@ Para cada cambio futuro:
 5. Usar `$speckit-implement` y ejecutar las comprobaciones exigidas para el cambio.
 6. Revisar resultados y actualizar los contratos afectados de la base cuando cambie el comportamiento. Usar `$speckit-converge` para comparar código con spec, plan y tareas de una feature.
 
-No crear un plan de reconstrucción ni marcar tareas retrospectivas como completadas solo porque exista la base. Planificar esta base tiene sentido únicamente si el alcance cubre expresamente brechas pendientes o trabajo de verificación. `.specify/feature.json` señala la feature activa local; las nuevas especificaciones lo actualizan automáticamente. Las especificaciones usan el directorio predeterminado `specs/`, independientemente del nombre de la rama.
+El [plan retrospectivo](001-baseline-backup-service/plan.md) completa la base con stack, arquitectura, modelo de datos y guía de validación existentes. No reconstruye el servicio ni marca tareas históricas como completadas. Las correcciones pendientes requieren alcance y aceptación propios antes de generar tareas. `.specify/feature.json` señala la feature activa local; las nuevas especificaciones lo actualizan automáticamente. Las especificaciones usan el directorio predeterminado `specs/`, independientemente del nombre de la rama.
 
 English version: [README.md](README.md).
