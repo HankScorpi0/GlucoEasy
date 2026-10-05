@@ -54,6 +54,16 @@ The goal is to preserve the Nightscout API surface that many existing apps and i
 
 ## Profile Support
 
+### Reception diagnostics and data compatibility
+
+Health uses a separate internal DO snapshot. Status and Nightscout records retain their fields and selection. Upload data and acceptance commit together. Two additive keys store diagnostics: `reception-summary` (timestamps/category counters) and `entry-receipts` (retained timestamps and first receipt or null). The `global` identity, class, bindings and data keys stay unchanged; no Wrangler migration is needed.
+
+Receipts follow ID/date deduplication, stay unknown for legacy duplicates and are pruned with retention. Counts saturate at `Number.MAX_SAFE_INTEGER` with lower-bound wording. Invalid batches still reject as a whole; oversized bodies retain `400`, with a separate internal category. Logs omit headers, client IDs, profile names and arbitrary exception text; parser/storage error messages are sanitized.
+
+Each rejection adds a DO call/write, including unauthorized uploads. There is no extra browser polling. `READ_PUBLIC=true` exposes summaries and health data to anyone with the URL; `false` requires existing authentication after setup, preserving the authorized one-time reveal session. Only observed and successfully saved diagnostic events are counted.
+
+On reactivation after rollback without instrumentation, use the explicit, guarded [new observation epoch procedure](specs/002-reception-diagnostics/quickstart.md#recovery-after-rollback). It resets only diagnostic metadata, preserving ordinary data and setup. No public reset endpoint is provided.
+
 Current profile support includes:
 
 - `GET /api/v1/profile/current`

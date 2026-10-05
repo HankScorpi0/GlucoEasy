@@ -94,6 +94,7 @@ export interface StatusPayload {
 }
 
 export interface HealthViewModel {
+  reception?: HealthReceptionSnapshot | null;
   latest: CgmEntry | null;
   latestDelta?: number | null;
   count: number;
@@ -103,4 +104,37 @@ export interface HealthViewModel {
   baseUrl: string;
   setupSecret?: string | null;
   setupPending?: boolean;
+}
+
+export type ReceptionCollection = "entries" | "treatments" | "profile";
+export type RejectionCategory = "authentication" | "payloadTooLarge" | "invalidPayload" | "internalFailure";
+
+export interface ReceptionSummary {
+  version: 1;
+  observedSince: number;
+  lastAccepted: { at: number; collection: ReceptionCollection } | null;
+  rejected: Record<RejectionCategory, number>;
+  saturated: Record<RejectionCategory, boolean>;
+}
+
+export type EntryReceipts = Record<string, number | null>;
+
+export interface HealthReceptionSnapshot {
+  evaluatedAt: number;
+  count: number;
+  futureCount: number;
+  reference: CgmEntry | null;
+  previousReference: CgmEntry | null;
+  referenceReceivedAt: number | null;
+  summary: ReceptionSummary;
+}
+
+export interface ReceptionEvaluation {
+  readingState: "empty" | "futureOnly" | "recent" | "stale";
+  readingAgeMs: number | null;
+  receptionDelayMs: number | null;
+  acceptedAgeMs: number | null;
+  thresholdMs: number;
+  rejectionTotal: number;
+  totalSaturated: boolean;
 }

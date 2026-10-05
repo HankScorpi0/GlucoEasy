@@ -32,6 +32,20 @@ Guía técnica: ver [README.technical.es.md](README.technical.es.md).
 
 ## Para Quién Es
 
+### Diagnóstico de recepción
+
+Las fechas usan la zona horaria local de tu navegador y muestran su indicación de zona. Con JavaScript desactivado se conserva la fecha ISO en UTC.
+
+Las páginas de estado distinguen disponibilidad del servidor ahora, último envío aceptado (lecturas, tratamientos o perfil) y actualidad de lecturas. Un envío recién aceptado puede contener lecturas antiguas. Una lectura es reciente hasta el mayor entre cinco minutos y dos intervalos de refresco de la página, incluido el límite.
+
+Fecha y antigüedad de lectura se separan de primera recepción conocida y retraso de recepción. Reenviar datos actualiza el último envío aceptado sin cambiar la primera recepción de esa lectura. La recepción es desconocida para datos anteriores a esta función. Las lecturas futuras siguen almacenadas y disponibles para clientes, pero se excluyen de actualidad y generan aviso de reloj; solo datos futuros se distingue de una instalación vacía.
+
+Los rechazos se cuentan una vez por petición: autenticación/configuración, cuerpo excesivo, formato/validación o fallo interno. Los recuentos se acumulan desde el inicio de observación visible y sobreviven a reinicios ordinarios. Excluyen fallos previos al servicio y fallos que impidan guardar el resumen. Los recuentos extraordinariamente grandes indican «al menos» al alcanzar el límite de precisión numérica. El diagnóstico no conserva cuerpos ni credenciales.
+
+El diagnóstico aparece solo en `/health` y `/es/health`; el estado para clientes no cambia. Con `READ_PUBLIC=true` (predeterminado del despliegue), cualquiera con la URL puede consultar datos de salud y resúmenes. Usa `false` para exigir autenticación después de configurar. La instrumentación añade escrituras y una llamada interna por rechazo; no garantiza gratuidad ni disponibilidad continua. Los errores del parser/almacenamiento usan mensajes genéricos seguros con los códigos y formatos existentes.
+
+![Diagnóstico de recepción con datos sintéticos](docs/images/reception-diagnostics-es-desktop.png)
+
 Este proyecto es para ti si:
 
 - quieres una segunda opción cuando falle el servicio principal

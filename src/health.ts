@@ -1,4 +1,5 @@
 import type { HealthViewModel } from "./types";
+import { evaluateReception, REJECTION_CATEGORIES } from "./reception";
 
 type HealthLocale = "en" | "es";
 
@@ -115,6 +116,9 @@ const COPY: Record<HealthLocale, HealthCopy> = {
 };
 
 function formatElapsed(date: number, now: number, copy: HealthCopy): string {
+  if (date > now) {
+    return copy === COPY.es ? "Fecha futura" : "Future timestamp";
+  }
   const deltaMs = Math.max(0, now - date);
   const minutes = Math.floor(deltaMs / 60000);
 
@@ -212,39 +216,80 @@ function deltaTone(delta: number | null | undefined): string {
   return delta > 0 ? "is-up" : "is-down";
 }
 
-function getServiceState(
-  latestDate: number | undefined,
-  refreshMs: number,
-  copy: HealthCopy
-): { tone: "live" | "stale" | "waiting"; label: string } {
-  if (!latestDate) {
-    return { tone: "waiting", label: copy.serviceWaiting };
-  }
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  })[character]!);
+}
 
-  const staleAfterMs = Math.max(refreshMs * 2, 5 * 60 * 1000);
-  const ageMs = Date.now() - latestDate;
-  if (ageMs <= staleAfterMs) {
-    return { tone: "live", label: copy.serviceLive };
+function renderReceptionPanel(view: HealthViewModel, locale: HealthLocale, refreshMs: number): string {
+  const es = locale === "es";
+  const copy = COPY[locale];
+  const pick = (en: string, spanish: string) => es ? spanish : en;
+  const available = pick("Server available", "Servidor disponible");
+  const disclaimer = pick("Informational backup only. Not a medical device; do not use for dosing or treatment decisions.",
+    "Respaldo informativo. No es un dispositivo médico; no sirve para dosificación ni decisiones de tratamiento.");
+  const title = pick("Reception diagnostics", "Diagnóstico de recepción");
+  const header = `<div class="panel-header"><p class="eyebrow">${pick("Reception", "Recepción")}</p><h2>${title}</h2></div>`;
+  const snapshot = view.reception;
+  if (!snapshot) {
+    return `<section class="panel reception-panel">${header}<p>${available}</p><p>${pick("Reception diagnostics unavailable", "Diagnóstico de recepción no disponible")}</p><p class="hint">${disclaimer}</p></section>`;
   }
-
-  return { tone: "stale", label: copy.serviceStale };
+  const evaluation = evaluateReception(snapshot, refreshMs);
+  const unknown = pick("Unknown", "Desconocido");
+  const timestamp = (at: number | null) => at === null ? unknown : `<time datetime="${new Date(at).toISOString()}">${new Date(at).toISOString()}</time>`;
+  const duration = (ms: number | null) => ms === null ? unknown : ms < 0
+    ? `${pick("Clock skew", "Desfase temporal")} (−${formatElapsed(0, -ms, copy)})`
+    : formatElapsed(0, ms, copy);
+  const collections = { entries: pick("Readings", "Lecturas"), treatments: pick("Treatments", "Tratamientos"), profile: pick("Profile", "Perfil") };
+  const states = {
+    empty: pick("No readings", "Sin lecturas"), futureOnly: pick("Only future timestamps", "Solo fechas futuras"),
+    recent: pick("Recent reading", "Lectura reciente"), stale: pick("Old reading", "Lectura antigua")
+  };
+  const accepted = snapshot.summary.lastAccepted;
+  const rejectionLabels = {
+    authentication: pick("Authentication / setup", "Autenticación / configuración"),
+    payloadTooLarge: pick("Payload too large", "Cuerpo excesivo"),
+    invalidPayload: pick("Format / validation", "Formato / validación"),
+    internalFailure: pick("Internal failure", "Fallo interno")
+  };
+  const atLeast = pick("at least ", "al menos ");
+  const detail = (label: string, value: string) => `<p class="detail-line"><strong>${label}</strong><br>${value}</p>`;
+  return `<section class="panel reception-panel">${header}
+    <div class="detail-grid">
+      ${detail(available, pick("Responding at this check", "Responde en esta consulta"))}
+      ${detail(pick("Last accepted upload", "Último envío aceptado"), accepted ? `${collections[accepted.collection]} · ${timestamp(accepted.at)}<br>${duration(evaluation.acceptedAgeMs)}` : pick("No accepted uploads recorded", "Sin envíos aceptados registrados"))}
+      ${detail(pick("Reading freshness", "Actualidad de lecturas"), `${states[evaluation.readingState]}<br>${pick("Threshold", "Umbral")}: ${duration(evaluation.thresholdMs)}`)}
+      ${detail(pick("Reading timestamp / age", "Fecha de lectura / antigüedad"), `${timestamp(snapshot.reference?.date ?? null)}<br>${duration(evaluation.readingAgeMs)}`)}
+      ${detail(pick("First known reception", "Primera recepción conocida"), timestamp(snapshot.referenceReceivedAt))}
+      ${detail(pick("Reception delay", "Retraso de recepción"), duration(evaluation.receptionDelayMs))}
+    </div>
+    ${snapshot.futureCount ? `<p class="future-warning" role="status"><strong>${pick("Future timestamps", "Fechas futuras")}: ${snapshot.futureCount}</strong> · ${pick("Excluded from reading freshness. Check the sender's clock.", "Excluidas de la actualidad de lecturas. Revisa el reloj del remitente.")}</p>` : ""}
+    <h3>${pick("Rejected uploads", "Envíos rechazados")}: ${evaluation.totalSaturated ? atLeast : ""}${evaluation.rejectionTotal}</h3>
+    <ul>${REJECTION_CATEGORIES.map((category) => `<li>${rejectionLabels[category]}: ${snapshot.summary.saturated[category] ? atLeast : ""}${snapshot.summary.rejected[category]}</li>`).join("")}</ul>
+    <p class="hint">${pick("Observed since", "Observado desde")}: ${timestamp(snapshot.summary.observedSince)}</p>
+    <p class="hint">${pick("Counts cover only uploads observed and saved since this time. Failures before reaching the service or preventing diagnostics from being saved are not counted.", "Los recuentos solo cubren envíos observados y guardados desde esta fecha. No incluyen fallos previos al servicio ni fallos que impidan guardar el diagnóstico.")}</p>
+    <p class="hint">${disclaimer}</p>
+  </section>`;
 }
 
 export function renderHealthPage(view: HealthViewModel, locale: HealthLocale = "en"): string {
   const copy = COPY[locale];
   const exampleSecret = view.setupSecret ?? "YOUR_API_SECRET";
-  const exampleUrl = `https://${exampleSecret}@${view.baseUrl.replace(/^https?:\/\//, "")}/api/v1/`;
+  const exampleUrl = escapeHtml(`https://${exampleSecret}@${view.baseUrl.replace(/^https?:\/\//, "")}/api/v1/`);
   const acknowledgePath = locale === "es" ? "/es/setup/acknowledge" : "/setup/acknowledge";
   const pageTitle = view.latest ? `${view.latest.sgv} mg/dL | GlucoEasy` : "GlucoEasy";
-  const latestAge = view.latest ? formatElapsed(view.latest.date, Date.now(), copy) : null;
-  const latestTreatmentAge = view.latestTreatment ? formatElapsed(view.latestTreatment.mills, Date.now(), copy) : null;
+  const evaluatedAt = view.reception?.evaluatedAt ?? Date.now();
+  const latestAge = view.latest ? formatElapsed(view.latest.date, evaluatedAt, copy) : null;
+  const latestTreatmentAge = view.latestTreatment ? formatElapsed(view.latestTreatment.mills, evaluatedAt, copy) : null;
   const latestDirection = directionToArrow(view.latest?.direction, copy.noData);
   const latestDirectionTone = directionTone(view.latest?.direction);
   const latestGlucoseTone = glucoseTone(view.latest?.sgv);
   const latestDelta = formatDelta(view.latestDelta);
   const latestDeltaTone = deltaTone(view.latestDelta);
   const refreshMs = Math.max(5000, (view.refreshSeconds ?? 30) * 1000);
-  const serviceState = getServiceState(view.latest?.date, refreshMs, copy);
+  const serviceState = { tone: "live", label: locale === "es" ? "Servidor disponible" : "Server available" };
+  const receptionBlock = renderReceptionPanel(view, locale, refreshMs);
   const autoRefreshScript =
     view.setupSecret || view.setupPending
       ? ""
@@ -265,7 +310,7 @@ export function renderHealthPage(view: HealthViewModel, locale: HealthLocale = "
           <h2>${copy.setupComplete}</h2>
         </div>
         <p class="panel-copy">${copy.setupCompleteBody}</p>
-        <code>${view.setupSecret}</code>
+        <code>${escapeHtml(view.setupSecret)}</code>
         <p class="hint">${copy.useUrl}</p>
         <code>${exampleUrl}</code>
         <form method="post" action="${acknowledgePath}">
@@ -297,7 +342,7 @@ export function renderHealthPage(view: HealthViewModel, locale: HealthLocale = "
             ${latestDelta ? `<p class="reading-delta ${latestDeltaTone}">${latestDelta}</p>` : ""}
           </div>
           <div class="pill-stack">
-            <p class="reading-meta">${copy.receivedAgo}: ${latestAge}</p>
+            <p class="reading-meta">${locale === "es" ? "Antigüedad de lectura" : "Reading age"}: ${latestAge}</p>
           </div>
         </div>
       </section>
@@ -306,10 +351,9 @@ export function renderHealthPage(view: HealthViewModel, locale: HealthLocale = "
       <section class="panel empty-panel">
         <div class="panel-header">
           <p class="eyebrow">Glucose</p>
-          <h2>${copy.noReadings}</h2>
+          <h2>${view.count > 0 ? (locale === "es" ? "Sin lectura no futura disponible" : "No non-future reading available") : copy.noReadings}</h2>
         </div>
-        <p class="panel-copy">${copy.configureUrl}</p>
-        <code>${exampleUrl}</code>
+        ${view.count > 0 ? "" : `<p class="panel-copy">${copy.configureUrl}</p><code>${exampleUrl}</code>`}
       </section>
     `;
   const latestTreatmentBlock = view.latestTreatment
@@ -326,12 +370,12 @@ export function renderHealthPage(view: HealthViewModel, locale: HealthLocale = "
             : `<span>${copy.noInsulin}</span>`
         }</p>
           <div class="pill-stack">
-            <p class="pill">${copy.receivedAgo}: ${latestTreatmentAge}</p>
+            <p class="pill">${locale === "es" ? "Antigüedad de tratamiento" : "Treatment age"}: ${latestTreatmentAge}</p>
           </div>
         </div>
-        <p class="treatment-type">${view.latestTreatment.eventType || copy.untypedTreatment}</p>
+        <p class="treatment-type">${escapeHtml(view.latestTreatment.eventType || copy.untypedTreatment)}</p>
         <div class="detail-grid treatment-details">
-          <p class="detail-line">${copy.notes}: ${view.latestTreatment.notes ?? copy.noNotes}</p>
+          <p class="detail-line">${copy.notes}: ${escapeHtml(String(view.latestTreatment.notes ?? copy.noNotes))}</p>
         </div>
       </section>
     `
@@ -748,6 +792,18 @@ export function renderHealthPage(view: HealthViewModel, locale: HealthLocale = "
       .detail-wide {
         grid-column: 1 / -1;
       }
+      .reception-panel {
+        grid-column: 1 / -1;
+      }
+      .reception-panel time {
+        overflow-wrap: anywhere;
+      }
+      .future-warning {
+        padding: 1rem;
+        border-radius: 16px;
+        background: #fff5df;
+        color: #6f490a;
+      }
       .setup {
         background: linear-gradient(180deg, #f4faff, #eef7ff);
         border-color: rgba(18, 100, 199, 0.18);
@@ -830,6 +886,7 @@ export function renderHealthPage(view: HealthViewModel, locale: HealthLocale = "
       </div>
       <div class="layout">
         ${setupBlock}
+        ${receptionBlock}
         ${latestBlock}
         ${latestTreatmentBlock}
       </div>
@@ -856,6 +913,21 @@ export function renderHealthPage(view: HealthViewModel, locale: HealthLocale = "
         </div>
       </section>
     </main>
+    <script>
+      (() => {
+        const formatter = new Intl.DateTimeFormat(document.documentElement.lang, {
+          year: "numeric", month: "2-digit", day: "2-digit",
+          hour: "2-digit", minute: "2-digit", second: "2-digit",
+          hourCycle: "h23", timeZoneName: "short"
+        });
+        document.querySelectorAll("time[datetime]").forEach((element) => {
+          const date = new Date(element.getAttribute("datetime"));
+          if (!Number.isNaN(date.getTime())) {
+            element.textContent = formatter.format(date);
+          }
+        });
+      })();
+    </script>
     ${autoRefreshScript}
   </body>
 </html>`;

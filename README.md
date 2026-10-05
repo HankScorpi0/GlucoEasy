@@ -32,6 +32,20 @@ Technical guide: see [README.technical.md](README.technical.md).
 
 ## Who This Is For
 
+### Reception diagnostics
+
+Dates use your browser’s local time zone, including its zone label. With JavaScript disabled, the ISO UTC timestamp remains visible.
+
+The health pages distinguish server availability now, the last accepted upload (readings, treatments or profile), and reading freshness. A newly accepted upload may contain old readings. A reading is recent up to the larger of five minutes and twice the page refresh interval, including the boundary.
+
+Reading timestamp and age are separate from first known reception and reception delay. Repeating an upload updates the last accepted upload without changing that reading's first reception. Reception is unknown for data stored before this feature. Future readings remain stored and available to clients, but are excluded from freshness and produce a clock warning; future-only data is distinguished from an empty installation.
+
+Rejected uploads are counted once per request: authentication/setup, oversized body, format/validation or internal failure. Counts accumulate since the displayed start of observation and survive ordinary restarts. They exclude failures before reaching the service or preventing the summary from being saved. Extremely large counts display “at least” at the numerical precision limit. Diagnostics retain no bodies or credentials.
+
+Diagnostics appear only on `/health` and `/es/health`; client status is unchanged. With `READ_PUBLIC=true` (deployment default), anyone knowing the URL can view health data and these summaries. Set it to `false` to require authentication after setup. Instrumentation adds writes and an internal call per rejected upload; it does not guarantee free operation or continuous availability. Parser/storage errors use safe generic messages with existing response codes and formats.
+
+![Reception diagnostics with synthetic data](docs/images/reception-diagnostics-en-desktop.png)
+
 This project is for you if:
 
 - you want a secondary option when the primary service fails

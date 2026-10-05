@@ -4,9 +4,11 @@
 
 **Created**: 2026-10-04
 
-**Status**: Draft
+**Status**: Completed
 
 **Input**: User description: "Diagnóstico de recepción. Distinguir servidor disponible, último envío aceptado y última lectura reciente. Mostrar retraso y recuentos mínimos de rechazos, sin guardar cuerpos ni credenciales. Detectar fechas futuras para evitar un falso estado de datos recientes."
+
+**Closed**: 2026-10-05 — Implementación aceptada por el usuario y desplegada en tinyscout-lite.
 
 ## Clarifications
 
@@ -61,7 +63,7 @@ Como responsable de la instalación, quiero ver recuentos básicos de envíos re
 **Acceptance Scenarios**:
 
 1. **Given** un resumen vacío, **When** se rechazan dos envíos por autenticación y uno por formato, **Then** el total aumenta en tres y las categorías muestran dos y uno respectivamente.
-2. **Given** un lote parcialmente válido que el comportamiento existente acepta, **When** se procesa, **Then** figura como envío aceptado y no se cuenta como petición rechazada; no se inventan rechazos por registros omitidos.
+2. **Given** un lote con un registro inválido, **When** se procesa según la validación existente, **Then** se rechaza todo el lote, se cuenta una sola petición rechazada y el último envío aceptado permanece intacto.
 3. **Given** lectura pública deshabilitada, **When** una persona sin autorización consulta el diagnóstico, **Then** no obtiene fechas, colecciones ni recuentos de recepción.
 4. **Given** peticiones con cuerpos y credenciales sintéticas distintivas, **When** se revisa la información generada por el diagnóstico, **Then** no aparece ninguno de esos contenidos ni identificadores del remitente.
 
@@ -95,6 +97,7 @@ Como responsable de la instalación, quiero ver recuentos básicos de envíos re
 - **FR-013**: La función DEBE mantener los datos existentes sin borrarlos ni atribuirles fechas de recepción inventadas. El inicio de observación DEBE distinguirse de la antigüedad de la instalación.
 - **FR-014**: Los indicadores DEBEN presentarse como diagnóstico operativo de un respaldo informativo, sin recomendaciones clínicas ni garantías de validez para decisiones de tratamiento.
 - **FR-015**: Los nuevos indicadores DEBEN mostrarse exclusivamente en las páginas de estado existentes en español e inglés. La respuesta de estado para clientes DEBE permanecer sin cambios; no se añade una consulta de diagnóstico independiente.
+- **FR-016**: Los recuentos DEBEN ser exactos hasta el límite de enteros seguros; si una categoría o el total alcanza saturación, se conserva una cota inferior y se muestra «al menos», sin desbordamiento ni falsa precisión.
 
 ### Key Entities *(include if feature involves data)*
 

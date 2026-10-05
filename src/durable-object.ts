@@ -1,9 +1,14 @@
 import { clampMaxEntries, mergeEntries, queryEntries } from "./entries";
 import { mergeTreatments, queryTreatments } from "./treatments";
+import { associateReceipts, createReceptionSummary, isRejectionCategory, recordAcceptance, recordRejection, selectHealthSnapshot, validateReceipts, validateReceptionSummary } from "./reception";
 import type {
   CgmEntry,
   EntriesSnapshot,
   EntryQuery,
+  Env,
+  HealthReceptionSnapshot,
+  ReceptionSummary,
+  RejectionCategory,
   NightscoutProfileRecord,
   SetupState,
   Treatment,
@@ -15,6 +20,8 @@ const STORAGE_KEY = "entries";
 const TREATMENTS_KEY = "treatments";
 const PROFILE_KEY = "profile";
 const SETUP_KEY = "setup";
+const RECEPTION_KEY = "reception-summary";
+const RECEIPTS_KEY = "entry-receipts";
 const API_SECRET_LENGTH = 6;
 
 export class EntriesDurableObject {
@@ -24,7 +31,38 @@ export class EntriesDurableObject {
   ) {}
 
   async fetch(request: Request): Promise<Response> {
+    try {
+      return await this.route(request);
+    } catch {
+      return Response.json({ error: "Internal storage error." }, { status: 500 });
+    }
+  }
+
+  private async route(request: Request): Promise<Response> {
     const url = new URL(request.url);
+
+    if (request.method === "GET" && url.pathname === "/health/snapshot") {
+      return Response.json(await this.getHealthSnapshot());
+    }
+
+    if (request.method === "POST" && url.pathname === "/reception/rejections") {
+      let body: unknown;
+      try {
+        body = await request.json();
+      } catch {
+        return new Response("Invalid category", { status: 400 });
+      }
+      if (!body || typeof body !== "object" || Array.isArray(body) || Object.keys(body).length !== 1 ||
+        !isRejectionCategory((body as { category?: unknown }).category)) {
+        return new Response("Invalid category", { status: 400 });
+      }
+      const category = (body as { category: RejectionCategory }).category;
+      await this.ctx.storage.transaction(async (txn) => {
+        const summary = await this.getReceptionSummary(txn, Date.now());
+        await txn.put(RECEPTION_KEY, recordRejection(summary, category));
+      });
+      return new Response(null, { status: 204 });
+    }
 
     if (request.method === "GET" && url.pathname === "/setup") {
       const state = await this.getSetupState();
@@ -155,17 +193,30 @@ export class EntriesDurableObject {
   }
 
   private async putEntries(incoming: CgmEntry[]): Promise<CgmEntry[]> {
-    const current = await this.getEntries();
-    const merged = mergeEntries(current, incoming, clampMaxEntries(this.env.MAX_ENTRIES));
-    await this.ctx.storage.put(STORAGE_KEY, merged);
-    return merged;
+    return this.ctx.storage.transaction(async (txn) => {
+      const current = (await txn.get<CgmEntry[]>(STORAGE_KEY)) ?? [];
+      const receipts = validateReceipts(await txn.get(RECEIPTS_KEY));
+      const at = Date.now();
+      const summary = await this.getReceptionSummary(txn, at);
+      const merged = mergeEntries(current, incoming, clampMaxEntries(this.env.MAX_ENTRIES));
+      await txn.put({
+        [STORAGE_KEY]: merged,
+        [RECEIPTS_KEY]: associateReceipts(current, incoming, merged, receipts, at),
+        [RECEPTION_KEY]: recordAcceptance(summary, "entries", at)
+      });
+      return merged;
+    });
   }
 
   private async putTreatments(incoming: Treatment[]): Promise<Treatment[]> {
-    const current = await this.getTreatments();
-    const merged = mergeTreatments(current, incoming, clampMaxEntries(this.env.MAX_ENTRIES));
-    await this.ctx.storage.put(TREATMENTS_KEY, merged);
-    return merged;
+    return this.ctx.storage.transaction(async (txn) => {
+      const current = (await txn.get<Treatment[]>(TREATMENTS_KEY)) ?? [];
+      const at = Date.now();
+      const summary = await this.getReceptionSummary(txn, at);
+      const merged = mergeTreatments(current, incoming, clampMaxEntries(this.env.MAX_ENTRIES));
+      await txn.put({ [TREATMENTS_KEY]: merged, [RECEPTION_KEY]: recordAcceptance(summary, "treatments", at) });
+      return merged;
+    });
   }
 
   private async deleteTreatment(treatmentId: string): Promise<{ status: "ok"; deleted: boolean; _id: string }> {
@@ -189,8 +240,32 @@ export class EntriesDurableObject {
   }
 
   private async putProfile(incoming: NightscoutProfileRecord): Promise<NightscoutProfileRecord> {
-    await this.ctx.storage.put(PROFILE_KEY, incoming);
-    return incoming;
+    return this.ctx.storage.transaction(async (txn) => {
+      const at = Date.now();
+      const summary = await this.getReceptionSummary(txn, at);
+      await txn.put({ [PROFILE_KEY]: incoming, [RECEPTION_KEY]: recordAcceptance(summary, "profile", at) });
+      return incoming;
+    });
+  }
+
+  private async getReceptionSummary(txn: DurableObjectTransaction, now: number): Promise<ReceptionSummary> {
+    const stored = await txn.get(RECEPTION_KEY);
+    return stored === undefined ? createReceptionSummary(now) : validateReceptionSummary(stored);
+  }
+
+  private async getHealthSnapshot(): Promise<HealthReceptionSnapshot> {
+    const stored = await this.ctx.storage.transaction(async (txn) => {
+      const entries = (await txn.get<CgmEntry[]>(STORAGE_KEY)) ?? [];
+      const receipts = await txn.get(RECEIPTS_KEY);
+      const now = Date.now();
+      const rawSummary = await txn.get(RECEPTION_KEY);
+      const summary = rawSummary === undefined ? createReceptionSummary(now) : rawSummary;
+      if (rawSummary === undefined) {
+        await txn.put(RECEPTION_KEY, summary);
+      }
+      return { entries, receipts, summary, now };
+    });
+    return selectHealthSnapshot(stored.entries, validateReceipts(stored.receipts), validateReceptionSummary(stored.summary), stored.now);
   }
 
   private async getSnapshot(): Promise<EntriesSnapshot> {

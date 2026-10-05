@@ -1,9 +1,277 @@
-import { SELF, env, reset } from "cloudflare:test";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { SELF, env, reset, runInDurableObject, abortAllDurableObjects } from "cloudflare:test";
+import worker from "../src/index";
+import type { HealthReceptionSnapshot } from "../src/types";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+beforeEach(async () => {
+  await runInDurableObject(receptionStub(), async (_instance, state) => {
+    await state.storage.delete(["setup", "entries", "treatments", "profile", "reception-summary", "entry-receipts"]);
+  });
+});
 
 afterEach(async () => {
   vi.useRealTimers();
+  vi.restoreAllMocks();
   await reset();
+});
+
+function receptionStub() {
+  return env.ENTRIES_DO.get(env.ENTRIES_DO.idFromName("global"));
+}
+
+async function receptionSnapshot(): Promise<HealthReceptionSnapshot> {
+  const response = await receptionStub().fetch("https://entries.internal/health/snapshot");
+  expect(response.ok).toBe(true);
+  return response.json() as Promise<HealthReceptionSnapshot>;
+}
+
+describe("reception integration", () => {
+  it.each(["entries", "treatments", "profile"] as const)("accepts Basic-auth %s aliases and updates its collection", async (collection) => {
+    const { secret } = await initializeSetup();
+    const body = collection === "entries" ? { sgv: 123, date: Date.now() } : collection === "treatments" ?
+      { eventType: "synthetic", created_at: new Date().toISOString() } : { defaultProfile: "synthetic" };
+    const response = await SELF.fetch(`https://example.com/api/v1/${collection}.json`, {
+      method: "POST", headers: { Authorization: `Basic ${btoa(`${secret}:`)}`, "Content-Type": "application/json" }, body: JSON.stringify(body)
+    });
+    expect(response.status).toBe(200);
+    await response.text();
+    expect((await receptionSnapshot()).summary.lastAccepted?.collection).toBe(collection);
+  });
+
+  it("serializes concurrent accepted uploads without losing data or moving acceptance backwards", async () => {
+    const { secret } = await initializeSetup();
+    const start = Date.now();
+    const responses = await Promise.all(Array.from({ length: 8 }, (_, index) => postEntries({ sgv: 123, date: start - index * 1000 }, secretHeader(secret))));
+    expect(responses.every((response) => response.status === 200)).toBe(true);
+    await Promise.all(responses.map((response) => response.text()));
+    const snapshot = await receptionSnapshot();
+    expect(snapshot.count).toBe(8);
+    expect(snapshot.summary.lastAccepted!.at).toBeGreaterThanOrEqual(start);
+    expect(snapshot.summary.lastAccepted!.at).toBeLessThanOrEqual(snapshot.evaluatedAt);
+  });
+
+  it("starts a guarded new observation epoch without deleting ordinary data", async () => {
+    const { secret } = await initializeSetup();
+    const date = Date.now() - 1000;
+    await postEntries({ sgv: 123, date }, secretHeader(secret));
+    await postTreatments({ created_at: new Date(date).toISOString(), eventType: "synthetic" }, secretHeader(secret));
+    await postProfile({ defaultProfile: "synthetic" }, secretHeader(secret));
+    const ordinary = await runInDurableObject(receptionStub(), async (_instance, state) => {
+      return [...await state.storage.get(["entries", "treatments", "profile", "setup"])];
+    });
+    const maintenance = () => runInDurableObject(receptionStub(), async (_instance, state) => {
+      await state.storage.transaction(async (txn) => {
+        const epoch = "reception-maintenance-2026-10-05";
+        if (await txn.get("reception-maintenance-epoch") !== epoch) {
+          await txn.delete(["reception-summary", "entry-receipts"]);
+          await txn.put("reception-maintenance-epoch", epoch);
+        }
+      });
+    });
+    await maintenance();
+    const fresh = await receptionSnapshot();
+    expect(fresh.summary.lastAccepted).toBeNull();
+    expect(fresh.referenceReceivedAt).toBeNull();
+    await postEntries({ sgv: 123, date }, secretHeader(secret));
+    const accepted = (await receptionSnapshot()).summary.lastAccepted;
+    await maintenance();
+    expect((await receptionSnapshot()).summary.lastAccepted).toEqual(accepted);
+    await runInDurableObject(receptionStub(), async (_instance, state) => {
+      expect([...await state.storage.get(["entries", "treatments", "profile", "setup"])]).toEqual(ordinary);
+    });
+  });
+
+  it("records setup-incomplete rejection without reading or saving the body", async () => {
+    const response = await postEntries({ marker: "synthetic-private-body" }, {});
+    expect(response.status).toBe(503);
+    expect((await receptionSnapshot()).summary.rejected.authentication).toBe(1);
+    expect((await receptionSnapshot()).summary.lastAccepted).toBeNull();
+  });
+
+  it("prunes receipt metadata to retained readings and keeps future-only health distinct from empty", async () => {
+    const { secret } = await initializeSetup();
+    const now = Date.now();
+    const readings = Array.from({ length: 2001 }, (_, index) => ({ sgv: 123, date: now + 600000 + index }));
+    expect((await postEntries(readings, secretHeader(secret))).status).toBe(200);
+    const snapshot = await receptionSnapshot();
+    expect(snapshot.count).toBe(2000);
+    expect(snapshot.futureCount).toBe(2000);
+    expect(snapshot.reference).toBeNull();
+    await runInDurableObject(receptionStub(), async (_instance, state) => {
+      const receipts = await state.storage.get<Record<string, number | null>>("entry-receipts");
+      expect(Object.keys(receipts!).length).toBe(2000);
+      expect(receipts![String(now + 600000)]).toBeUndefined();
+    });
+    const html = await (await SELF.fetch("https://example.com/health", { headers: secretHeader(secret) })).text();
+    expect(html).toContain("Only future timestamps");
+    expect(html).not.toContain("No readings received yet");
+  });
+
+  it("preserves the rejected response when recording diagnostics fails", async () => {
+    const { secret } = await initializeSetup();
+    await runInDurableObject(receptionStub(), async (_instance, state) => {
+      await state.storage.put("reception-summary", { broken: true });
+    });
+    const response = await postEntries({}, { "api-secret": "incorrect-synthetic" });
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ error: "Unauthorized" });
+    await runInDurableObject(receptionStub(), async (_instance, state) => {
+      expect(await state.storage.get("reception-summary")).toEqual({ broken: true });
+      await state.storage.delete("reception-summary");
+    });
+    expect((await SELF.fetch("https://example.com/es/health", { headers: secretHeader(secret) })).status).toBe(200);
+  });
+
+  it("records acceptance separately from old reading age and preserves duplicate receipt", async () => {
+    const { secret } = await initializeSetup();
+    const date = Date.now() - 7200000;
+    await postEntries({ _id: "synthetic-reading", sgv: 123, date }, secretHeader(secret));
+    const first = await receptionSnapshot();
+    expect(first.summary.lastAccepted?.collection).toBe("entries");
+    expect(first.referenceReceivedAt! - date).toBeGreaterThanOrEqual(7200000);
+    await postEntries({ _id: "synthetic-reading", sgv: 124, date }, secretHeader(secret));
+    expect((await receptionSnapshot()).referenceReceivedAt).toBe(first.referenceReceivedAt);
+    for (const path of ["/health", "/es/health"]) {
+      const html = await (await SELF.fetch(`https://example.com${path}`, { headers: secretHeader(secret) })).text();
+      expect(html).toContain(path === "/health" ? "Old reading" : "Lectura antigua");
+      expect(html).toContain(new Date(date).toISOString());
+    }
+    await postProfile({ defaultProfile: "synthetic" }, secretHeader(secret), "PUT");
+    expect((await receptionSnapshot()).summary.lastAccepted?.collection).toBe("profile");
+    expect((await receptionSnapshot()).referenceReceivedAt).toBe(first.referenceReceivedAt);
+  });
+
+  it("preserves unknown legacy receipts and diagnostics through a real instance restart", async () => {
+    const { secret } = await initializeSetup();
+    const date = Date.now() - 1000;
+    await runInDurableObject(receptionStub(), async (_instance, state) => {
+      await state.storage.put("entries", [{ _id: "legacy", sgv: 123, date, dateString: new Date(date).toISOString(), type: "sgv" }]);
+    });
+    expect((await receptionSnapshot()).referenceReceivedAt).toBeNull();
+    await postEntries({ _id: "legacy", sgv: 123, date }, secretHeader(secret));
+    const before = await receptionSnapshot();
+    expect(before.referenceReceivedAt).toBeNull();
+    await abortAllDurableObjects();
+    const after = await receptionSnapshot();
+    expect(after.summary).toEqual(before.summary);
+    expect(after.referenceReceivedAt).toBeNull();
+  });
+
+  it("keeps future readings in API while health chooses valid references and delta", async () => {
+    const { secret } = await initializeSetup();
+    const now = Date.now();
+    await postEntries([{ sgv: 999, date: now + 600000 }, { sgv: 123, date: now - 1000 }, { sgv: 120, date: now - 2000 }], secretHeader(secret));
+    const snapshot = await receptionSnapshot();
+    expect(snapshot.futureCount).toBe(1);
+    expect(snapshot.reference?.sgv).toBe(123);
+    const html = await (await SELF.fetch("https://example.com/health", { headers: secretHeader(secret) })).text();
+    expect(html).toContain("Future timestamps: 1");
+    expect(html).toContain('class="reading-delta is-up">+3<');
+    const status = await (await SELF.fetch("https://example.com/api/v1/status.json", { headers: secretHeader(secret) })).json() as Record<string, unknown> & { entries: { last: { sgv: number } } };
+    expect(Object.keys(status).sort()).toEqual(["status", "name", "version", "serverTime", "apiEnabled", "entries"].sort());
+    expect(status.entries.last.sgv).toBe(999);
+    expect(JSON.stringify(status)).not.toContain("referenceReceivedAt");
+  });
+
+  it("counts twenty concurrent rejected requests once and excludes reads, deletes and accepted empty batches", async () => {
+    const { secret } = await initializeSetup();
+    await postEntries([], secretHeader(secret));
+    const accepted = (await receptionSnapshot()).summary.lastAccepted;
+    const responses = await Promise.all(Array.from({ length: 20 }, () => postEntries({ sgv: 123, date: Date.now() }, { "api-secret": "wrong-synthetic" })));
+    expect(responses.every((response) => response.status === 401)).toBe(true);
+    await SELF.fetch("https://example.com/api/v1/entries.json", { headers: secretHeader(secret) });
+    await deleteTreatment("synthetic-missing", secretHeader(secret));
+    const snapshot = await receptionSnapshot();
+    expect(snapshot.summary.rejected).toEqual({ authentication: 20, payloadTooLarge: 0, invalidPayload: 0, internalFailure: 0 });
+    expect(snapshot.summary.lastAccepted).toEqual(accepted);
+  });
+
+  it("classifies invalid JSON, oversized bodies and all-or-nothing invalid batches with safe errors", async () => {
+    const { secret } = await initializeSetup();
+    const before = (await receptionSnapshot()).summary.lastAccepted;
+    const headers = { ...secretHeader(secret), "Content-Type": "application/json" };
+    const malformed = await SELF.fetch("https://example.com/api/v1/entries", { method: "POST", headers, body: '{"private-payload-marker"' });
+    expect(malformed.status).toBe(400);
+    expect(await malformed.text()).not.toContain("private-payload-marker");
+    expect((await SELF.fetch("https://example.com/api/v1/entries.json", { method: "POST", headers, body: "x".repeat(256 * 1024 + 1) })).status).toBe(400);
+    expect((await postEntries([{ sgv: 123, date: Date.now() }, { sgv: "bad" }], secretHeader(secret))).status).toBe(400);
+    const snapshot = await receptionSnapshot();
+    expect(snapshot.count).toBe(0);
+    expect(snapshot.summary.lastAccepted).toEqual(before);
+    expect(snapshot.summary.rejected).toMatchObject({ invalidPayload: 2, payloadTooLarge: 1 });
+  });
+
+  it("does not reveal diagnostics on private pages and preserves public access as configured", async () => {
+    const { secret, cookie } = await initializeSetup();
+    await acknowledgeSetup(cookie);
+    const privateResponse = await SELF.fetch("https://example.com/es/health");
+    expect(privateResponse.status).toBe(401);
+    expect(await privateResponse.text()).not.toContain("Observado desde");
+    const response = await worker.fetch(new Request("https://example.com/es/health"), { ...env, READ_PUBLIC: "true" });
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain("Diagnóstico de recepción");
+    expect((await SELF.fetch("https://example.com/reception/rejections", { method: "POST", body: '{}' })).status).toBe(404);
+    expect((await SELF.fetch("https://example.com/health/snapshot", { headers: secretHeader(secret) })).status).toBe(404);
+  });
+
+  it("rejects invalid internal categories and retains corrupt metadata without silently resetting it", async () => {
+    const { secret } = await initializeSetup();
+    expect((await receptionStub().fetch("https://entries.internal/reception/rejections", { method: "POST", body: '{"category":"authentication","extra":"marker"}' })).status).toBe(400);
+    await runInDurableObject(receptionStub(), async (_instance, state) => {
+      await state.storage.put("reception-summary", { broken: "synthetic" });
+    });
+    const response = await SELF.fetch("https://example.com/health", { headers: secretHeader(secret) });
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain("Reception diagnostics unavailable");
+    await runInDurableObject(receptionStub(), async (_instance, state) => {
+      expect(await state.storage.get("reception-summary")).toEqual({ broken: "synthetic" });
+      await state.storage.delete("reception-summary");
+    });
+  });
+
+  it("does not log credentials, headers, client identities or profile content", async () => {
+    const { secret } = await initializeSetup();
+    const log = vi.spyOn(console, "log");
+    const warn = vi.spyOn(console, "warn");
+    await postProfile({ defaultProfile: "private-profile-marker" }, { ...secretHeader(secret), "User-Agent": "private-agent-marker" });
+    await postEntries({ _id: "private-id-marker", sgv: 123, date: Date.now() }, secretHeader(secret));
+    await postEntries({}, { "api-secret": "private-credential-marker" });
+    const logs = JSON.stringify([...log.mock.calls, ...warn.mock.calls]);
+    for (const marker of [secret, "private-profile-marker", "private-agent-marker", "private-id-marker", "private-credential-marker"]) {
+      expect(logs).not.toContain(marker);
+    }
+    await runInDurableObject(receptionStub(), async (_instance, state) => {
+      const metadata = JSON.stringify([await state.storage.get("reception-summary"), await state.storage.get("entry-receipts")]);
+      expect(metadata).not.toContain("private-");
+      expect(metadata).not.toContain("sgv");
+    });
+  });
+
+  it("rolls back data and acceptance together and records storage failure only when possible", async () => {
+    const { secret } = await initializeSetup();
+    await runInDurableObject(receptionStub(), async (_instance, state) => {
+      const original = state.storage.transaction.bind(state.storage);
+      vi.spyOn(state.storage, "transaction").mockImplementation((callback) => original(async (txn) => {
+        const originalPut = txn.put.bind(txn);
+        vi.spyOn(txn, "put").mockImplementation(async (...args: unknown[]) => {
+          if (args.length === 1 && args[0] && typeof args[0] === "object" && "entries" in args[0]) {
+            await originalPut(args[0] as Record<string, unknown>);
+            throw new Error("private-storage-marker");
+          }
+          return (originalPut as (...values: unknown[]) => Promise<void>)(...args);
+        });
+        return callback(txn);
+      }));
+    });
+    const response = await postEntries({ sgv: 123, date: Date.now() }, secretHeader(secret));
+    expect(response.status).toBe(400);
+    expect(await response.text()).not.toContain("private-storage-marker");
+    vi.restoreAllMocks();
+    const snapshot = await receptionSnapshot();
+    expect(snapshot.count).toBe(0);
+    expect(snapshot.summary.lastAccepted).toBeNull();
+    expect(snapshot.summary.rejected.internalFailure).toBe(1);
+  });
 });
 
 async function initializeSetup(): Promise<{ secret: string; cookie: string }> {
@@ -413,7 +681,7 @@ describe("api", () => {
     expect(html).toContain("Latest treatment");
     expect(html).toContain("Correction Bolus");
     expect(html).toContain('class="reading treatment-reading">1.2 <span>U</span>');
-    expect(html).toContain("Received:");
+    expect(html).toContain("Treatment age:");
     expect(html).toContain("View status data");
     expect(html).toContain("window.setTimeout(() =>");
     expect(html).toContain("window.location.reload()");
@@ -455,7 +723,7 @@ describe("api", () => {
     expect(html).toContain("Latest treatment");
     expect(html).toContain("Correction Bolus");
     expect(html).toContain('class="reading treatment-reading">1.2 <span>U</span>');
-    expect(html).toContain("Received:");
+    expect(html).toContain("Treatment age:");
     expect(html).not.toContain("Site Change");
   });
 
@@ -501,6 +769,6 @@ describe("api", () => {
     expect(html).toContain("Ultimo tratamiento");
     expect(html).toContain("Ver datos de estado");
     expect(html).toContain('class="reading treatment-reading">1.2 <span>U</span>');
-    expect(html).toContain("Recibido hace:");
+    expect(html).toContain("Antigüedad de tratamiento:");
   });
 });
