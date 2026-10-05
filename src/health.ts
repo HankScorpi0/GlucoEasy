@@ -38,6 +38,19 @@ interface HealthCopy {
   openSource: string;
   openSourceBody: string;
   viewRepository: string;
+  glucose: string;
+  treatment: string;
+  setup: string;
+  system: string;
+  readingAge: string;
+  treatmentAge: string;
+  treatmentDate: string;
+  recentReading: string;
+  oldReading: string;
+  unavailable: string;
+  disclaimer: string;
+  receptionDetails: string;
+  fullTreatmentType: string;
 }
 
 const COPY: Record<HealthLocale, HealthCopy> = {
@@ -75,7 +88,20 @@ const COPY: Record<HealthLocale, HealthCopy> = {
     viewStatusJson: "View status data",
     openSource: "Secondary service purpose",
     openSourceBody: "GlucoEasy is designed as an easy secondary service for apps like xDrip+ and Zukkah, with free Cloudflare deployment.",
-    viewRepository: "View repository"
+    viewRepository: "View repository",
+    glucose: "Glucose",
+    treatment: "Treatment",
+    setup: "Setup",
+    system: "System",
+    readingAge: "Reading age",
+    treatmentAge: "Treatment age",
+    treatmentDate: "Date",
+    recentReading: "Recent reading",
+    oldReading: "Old reading",
+    unavailable: "Reading freshness unavailable",
+    disclaimer: "Informational backup only. Not a medical device; do not use for dosing or treatment decisions.",
+    receptionDetails: "Reception details",
+    fullTreatmentType: "Full treatment type"
   },
   es: {
     lessThanOneMinute: "menos de 1 minuto",
@@ -86,32 +112,45 @@ const COPY: Record<HealthLocale, HealthCopy> = {
     serviceLive: "Servicio activo",
     serviceStale: "Servicio sin datos recientes",
     serviceWaiting: "Esperando datos",
-    setupComplete: "Configuracion completada",
-    setupCompleteBody: "Guarda este codigo secreto ahora. Por seguridad solo se mostrara esta unica vez.",
+    setupComplete: "Configuración completada",
+    setupCompleteBody: "Guarda este código secreto ahora. Por seguridad solo se mostrará esta única vez.",
     useUrl: "Usa esta URL de xDrip+:",
-    savedIt: "Ya lo guarde",
-    setupInitialized: "La configuracion ya fue inicializada",
-    setupInitializedBody: "La pantalla del codigo secreto de un solo uso ya fue vista en otra sesion del navegador.",
-    latestReading: "Ultima lectura",
+    savedIt: "Ya lo guardé",
+    setupInitialized: "La configuración ya fue inicializada",
+    setupInitializedBody: "La pantalla del código secreto de un solo uso ya fue vista en otra sesión del navegador.",
+    latestReading: "Última lectura",
     receivedAgo: "Recibido hace",
-    direction: "Direccion",
+    direction: "Dirección",
     noData: "Sin datos",
-    noReadings: "Todavia no se han recibido lecturas.",
+    noReadings: "Todavía no se han recibido lecturas.",
     configureUrl: "Configura xDrip+ con esta URL:",
-    latestTreatment: "Ultimo tratamiento",
+    latestTreatment: "Último tratamiento",
     untypedTreatment: "Tratamiento sin tipo",
     insulin: "Insulina",
     noInsulin: "Sin insulina",
     notes: "Notas",
     noNotes: "Sin notas",
-    noTreatments: "Todavia no se han recibido tratamientos.",
-    noTreatmentsBody: "GlucoEasy mostrara aqui el tratamiento mas reciente para que este servicio este listo como respaldo sencillo.",
+    noTreatments: "Todavía no se han recibido tratamientos.",
+    noTreatmentsBody: "GlucoEasy mostrará aquí el tratamiento más reciente para que este servicio esté listo como respaldo sencillo.",
     title: "GlucoEasy",
     status: "Estado",
     viewStatusJson: "Ver datos de estado",
     openSource: "Finalidad del servicio",
-    openSourceBody: "GlucoEasy esta pensado como servicio secundario para apps como xDrip+ y Zukkah, con despliegue gratis en Cloudflare y una instalacion muy simple.",
-    viewRepository: "Ver repositorio"
+    openSourceBody: "GlucoEasy está pensado como servicio secundario para apps como xDrip+ y Zukkah, con despliegue gratis en Cloudflare y una instalación muy simple.",
+    viewRepository: "Ver repositorio",
+    glucose: "Glucosa",
+    treatment: "Tratamiento",
+    setup: "Configuración",
+    system: "Sistema",
+    readingAge: "Antigüedad de lectura",
+    treatmentAge: "Antigüedad de tratamiento",
+    treatmentDate: "Fecha",
+    recentReading: "Lectura reciente",
+    oldReading: "Lectura antigua",
+    unavailable: "Actualidad de lectura no disponible",
+    disclaimer: "Respaldo informativo. No es un dispositivo médico; no sirve para dosificación ni decisiones de tratamiento.",
+    receptionDetails: "Detalles de recepción",
+    fullTreatmentType: "Tipo de tratamiento completo"
   }
 };
 
@@ -227,13 +266,11 @@ function renderReceptionPanel(view: HealthViewModel, locale: HealthLocale, refre
   const copy = COPY[locale];
   const pick = (en: string, spanish: string) => es ? spanish : en;
   const available = pick("Server available", "Servidor disponible");
-  const disclaimer = pick("Informational backup only. Not a medical device; do not use for dosing or treatment decisions.",
-    "Respaldo informativo. No es un dispositivo médico; no sirve para dosificación ni decisiones de tratamiento.");
   const title = pick("Reception diagnostics", "Diagnóstico de recepción");
   const header = `<div class="panel-header"><p class="eyebrow">${pick("Reception", "Recepción")}</p><h2>${title}</h2></div>`;
   const snapshot = view.reception;
   if (!snapshot) {
-    return `<section class="panel reception-panel">${header}<p>${available}</p><p>${pick("Reception diagnostics unavailable", "Diagnóstico de recepción no disponible")}</p><p class="hint">${disclaimer}</p></section>`;
+    return `<section id="reception" class="panel reception-panel">${header}<p>${available}</p><p class="hint">${pick("Reception diagnostics unavailable", "Diagnóstico de recepción no disponible")}</p></section>`;
   }
   const evaluation = evaluateReception(snapshot, refreshMs);
   const unknown = pick("Unknown", "Desconocido");
@@ -255,7 +292,12 @@ function renderReceptionPanel(view: HealthViewModel, locale: HealthLocale, refre
   };
   const atLeast = pick("at least ", "al menos ");
   const detail = (label: string, value: string) => `<p class="detail-line"><strong>${label}</strong><br>${value}</p>`;
-  return `<section class="panel reception-panel">${header}
+  return `<section id="reception" class="panel reception-panel">${header}
+    <p>${available} · ${states[evaluation.readingState]}</p>
+    <p class="hint">${pick("Rejected uploads", "Envíos rechazados")}: ${evaluation.totalSaturated ? atLeast : ""}${evaluation.rejectionTotal}</p>
+    ${snapshot.futureCount ? `<p class="future-warning" role="status"><strong>${pick("Future timestamps", "Fechas futuras")}: ${snapshot.futureCount}</strong> · ${pick("Excluded from reading freshness. Check the sender's clock.", "Excluidas de la actualidad de lecturas. Revisa el reloj del remitente.")}</p>` : ""}
+    <details id="reception-details">
+    <summary id="reception-summary">${copy.receptionDetails}</summary>
     <div class="detail-grid">
       ${detail(available, pick("Responding at this check", "Responde en esta consulta"))}
       ${detail(pick("Last accepted upload", "Último envío aceptado"), accepted ? `${collections[accepted.collection]} · ${timestamp(accepted.at)}<br>${duration(evaluation.acceptedAgeMs)}` : pick("No accepted uploads recorded", "Sin envíos aceptados registrados"))}
@@ -264,13 +306,88 @@ function renderReceptionPanel(view: HealthViewModel, locale: HealthLocale, refre
       ${detail(pick("First known reception", "Primera recepción conocida"), timestamp(snapshot.referenceReceivedAt))}
       ${detail(pick("Reception delay", "Retraso de recepción"), duration(evaluation.receptionDelayMs))}
     </div>
-    ${snapshot.futureCount ? `<p class="future-warning" role="status"><strong>${pick("Future timestamps", "Fechas futuras")}: ${snapshot.futureCount}</strong> · ${pick("Excluded from reading freshness. Check the sender's clock.", "Excluidas de la actualidad de lecturas. Revisa el reloj del remitente.")}</p>` : ""}
     <h3>${pick("Rejected uploads", "Envíos rechazados")}: ${evaluation.totalSaturated ? atLeast : ""}${evaluation.rejectionTotal}</h3>
     <ul>${REJECTION_CATEGORIES.map((category) => `<li>${rejectionLabels[category]}: ${snapshot.summary.saturated[category] ? atLeast : ""}${snapshot.summary.rejected[category]}</li>`).join("")}</ul>
     <p class="hint">${pick("Observed since", "Observado desde")}: ${timestamp(snapshot.summary.observedSince)}</p>
     <p class="hint">${pick("Counts cover only uploads observed and saved since this time. Failures before reaching the service or preventing diagnostics from being saved are not counted.", "Los recuentos solo cubren envíos observados y guardados desde esta fecha. No incluyen fallos previos al servicio ni fallos que impidan guardar el diagnóstico.")}</p>
-    <p class="hint">${disclaimer}</p>
+    </details>
   </section>`;
+}
+
+function renderRefreshScript(refreshMs: number, paused: boolean): string {
+  return `<script>
+    (() => {
+      const key = "glucoeasy.health.refresh.v1";
+      const historyKey = "glucoeasyHealthRefresh";
+      const controls = ["reception-summary", "status-link", "repository-link", "treatment-type-summary", "direction-summary"];
+      const details = document.getElementById("reception-details");
+      const finite = (value) => typeof value === "number" && Number.isFinite(value) && value >= 0;
+      const valid = (value) => value && value.version === 1 &&
+        ["/health", "/es/health"].includes(value.pathname) && value.pathname === window.location.pathname &&
+        finite(value.savedAt) && value.savedAt <= Date.now() && Date.now() - value.savedAt <= ${refreshMs * 2 + 60000} &&
+        typeof value.receptionOpen === "boolean" && finite(value.scrollX) && finite(value.scrollY) &&
+        (value.focusedControl === null || controls.includes(value.focusedControl));
+      let stored = null;
+      let fromHistory = null;
+      try {
+        const raw = window.sessionStorage.getItem(key);
+        window.sessionStorage.removeItem(key);
+        stored = raw ? JSON.parse(raw) : null;
+      } catch { /* Storage may be disabled or contain an invalid record. */ }
+      try {
+        const state = window.history.state;
+        if (state && typeof state === "object" && Object.hasOwn(state, historyKey)) {
+          fromHistory = state[historyKey];
+          const next = { ...state };
+          delete next[historyKey];
+          window.history.replaceState(next, "");
+        }
+      } catch { /* Keep the page usable if history access is blocked. */ }
+      ${paused ? "" : `
+      const navigation = window.performance.getEntriesByType("navigation")[0];
+      const record = valid(stored) ? stored : valid(fromHistory) ? fromHistory : null;
+      if (record && navigation?.type === "reload") {
+        if (details) details.open = record.receptionOpen;
+        window.requestAnimationFrame(() => {
+          const control = record.focusedControl ? document.getElementById(record.focusedControl) : null;
+          const target = control && control.getClientRects().length ? control :
+            record.focusedControl ? document.getElementById("reception-summary") : null;
+          if (target && target.getClientRects().length) target.focus({ preventScroll: true });
+          const root = document.scrollingElement;
+          if (root) window.scrollTo(
+            Math.min(record.scrollX, Math.max(0, root.scrollWidth - window.innerWidth)),
+            Math.min(record.scrollY, Math.max(0, root.scrollHeight - window.innerHeight))
+          );
+        });
+      }
+      window.setTimeout(() => {
+        const focused = document.activeElement?.id;
+        const next = {
+          version: 1,
+          pathname: window.location.pathname,
+          savedAt: Date.now(),
+          receptionOpen: Boolean(details?.open),
+          scrollX: Math.max(0, window.scrollX),
+          scrollY: Math.max(0, window.scrollY),
+          focusedControl: controls.includes(focused) ? focused : null
+        };
+        if (valid(next)) {
+          try {
+            window.sessionStorage.setItem(key, JSON.stringify(next));
+          } catch {
+            try {
+              const state = window.history.state;
+              if (state === null || (typeof state === "object" && !Array.isArray(state))) {
+                window.history.replaceState({ ...state, [historyKey]: next }, "");
+              }
+            } catch { /* Refresh still works if both persistence APIs are blocked. */ }
+          }
+        }
+        window.location.reload();
+      }, ${refreshMs});
+      `}
+    })();
+  </script>`;
 }
 
 export function renderHealthPage(view: HealthViewModel, locale: HealthLocale = "en"): string {
@@ -282,31 +399,26 @@ export function renderHealthPage(view: HealthViewModel, locale: HealthLocale = "
   const evaluatedAt = view.reception?.evaluatedAt ?? Date.now();
   const latestAge = view.latest ? formatElapsed(view.latest.date, evaluatedAt, copy) : null;
   const latestTreatmentAge = view.latestTreatment ? formatElapsed(view.latestTreatment.mills, evaluatedAt, copy) : null;
+  const treatmentType = view.latestTreatment?.eventType || copy.untypedTreatment;
+  const extendedTreatmentType = treatmentType.length > 80;
+  const treatmentSummaryType = extendedTreatmentType ? treatmentType.slice(0, 77) + "…" : treatmentType;
   const latestDirection = directionToArrow(view.latest?.direction, copy.noData);
+  const extendedDirection = latestDirection.length > 12;
   const latestDirectionTone = directionTone(view.latest?.direction);
   const latestGlucoseTone = glucoseTone(view.latest?.sgv);
   const latestDelta = formatDelta(view.latestDelta);
   const latestDeltaTone = deltaTone(view.latestDelta);
   const refreshMs = Math.max(5000, (view.refreshSeconds ?? 30) * 1000);
+  const readingState = view.reception ? evaluateReception(view.reception, refreshMs).readingState : null;
+  const readingStatus = readingState === "recent" ? copy.recentReading : readingState === "stale" ? copy.oldReading : copy.unavailable;
   const serviceState = { tone: "live", label: locale === "es" ? "Servidor disponible" : "Server available" };
   const receptionBlock = renderReceptionPanel(view, locale, refreshMs);
-  const autoRefreshScript =
-    view.setupSecret || view.setupPending
-      ? ""
-      : `
-    <script>
-      (() => {
-        window.setTimeout(() => {
-          window.location.reload();
-        }, ${refreshMs});
-      })();
-    </script>
-  `;
+  const autoRefreshScript = renderRefreshScript(refreshMs, Boolean(view.setupSecret || view.setupPending));
   const setupBlock = view.setupSecret
     ? `
       <section class="panel setup setup-ready">
         <div class="panel-header">
-          <p class="eyebrow">Setup</p>
+          <p class="eyebrow">${copy.setup}</p>
           <h2>${copy.setupComplete}</h2>
         </div>
         <p class="panel-copy">${copy.setupCompleteBody}</p>
@@ -322,7 +434,7 @@ export function renderHealthPage(view: HealthViewModel, locale: HealthLocale = "
       ? `
       <section class="panel setup">
         <div class="panel-header">
-          <p class="eyebrow">Setup</p>
+          <p class="eyebrow">${copy.setup}</p>
           <h2>${copy.setupInitialized}</h2>
         </div>
         <p class="panel-copy">${copy.setupInitializedBody}</p>
@@ -331,36 +443,40 @@ export function renderHealthPage(view: HealthViewModel, locale: HealthLocale = "
       : "";
   const latestBlock = view.latest
     ? `
-      <section class="panel reading-panel">
+      <section id="latest-reading" class="panel reading-panel">
         <div class="panel-header">
-          <p class="eyebrow">Glucose</p>
+          <p class="eyebrow">${copy.glucose}</p>
           <h2>${copy.latestReading}</h2>
         </div>
         <div class="reading-row">
           <div class="reading-value-group">
-            <p class="reading ${latestGlucoseTone}">${view.latest.sgv} <span>mg/dL</span> <span class="direction-arrow ${latestDirectionTone}">${latestDirection}</span></p>
+            <p class="reading ${latestGlucoseTone}">${view.latest.sgv} <span>mg/dL</span> <span class="direction-arrow ${latestDirectionTone}">${escapeHtml(extendedDirection ? copy.noData : latestDirection)}</span></p>
             ${latestDelta ? `<p class="reading-delta ${latestDeltaTone}">${latestDelta}</p>` : ""}
           </div>
           <div class="pill-stack">
-            <p class="reading-meta">${locale === "es" ? "Antigüedad de lectura" : "Reading age"}: ${latestAge}</p>
+            <p class="reading-meta">${copy.readingAge}: ${latestAge}</p>
           </div>
         </div>
+        <p class="freshness">${readingStatus}</p>
+        ${extendedDirection ? `<details id="direction-details"><summary id="direction-summary">${copy.direction}</summary><p>${escapeHtml(latestDirection)}</p></details>` : ""}
+        <p class="disclaimer">${copy.disclaimer}</p>
       </section>
     `
     : `
-      <section class="panel empty-panel">
+      <section id="latest-reading" class="panel empty-panel">
         <div class="panel-header">
-          <p class="eyebrow">Glucose</p>
+          <p class="eyebrow">${copy.glucose}</p>
           <h2>${view.count > 0 ? (locale === "es" ? "Sin lectura no futura disponible" : "No non-future reading available") : copy.noReadings}</h2>
         </div>
+        <p class="disclaimer">${copy.disclaimer}</p>
         ${view.count > 0 ? "" : `<p class="panel-copy">${copy.configureUrl}</p><code>${exampleUrl}</code>`}
       </section>
     `;
   const latestTreatmentBlock = view.latestTreatment
     ? `
-      <section class="panel treatment-panel">
+      <section id="latest-treatment" class="panel treatment-panel">
         <div class="panel-header">
-          <p class="eyebrow">Treatment</p>
+          <p class="eyebrow">${copy.treatment}</p>
           <h2>${copy.latestTreatment}</h2>
         </div>
         <div class="reading-row">
@@ -370,19 +486,21 @@ export function renderHealthPage(view: HealthViewModel, locale: HealthLocale = "
             : `<span>${copy.noInsulin}</span>`
         }</p>
           <div class="pill-stack">
-            <p class="pill">${locale === "es" ? "Antigüedad de tratamiento" : "Treatment age"}: ${latestTreatmentAge}</p>
+            <p class="pill">${copy.treatmentAge}: ${latestTreatmentAge}</p>
           </div>
         </div>
-        <p class="treatment-type">${escapeHtml(view.latestTreatment.eventType || copy.untypedTreatment)}</p>
+        <p class="treatment-type">${escapeHtml(treatmentSummaryType)}</p>
+        <p class="treatment-date">${copy.treatmentDate}: <time datetime="${new Date(view.latestTreatment.mills).toISOString()}">${new Date(view.latestTreatment.mills).toISOString()}</time></p>
+        ${extendedTreatmentType ? `<details id="treatment-type-details"><summary id="treatment-type-summary">${copy.fullTreatmentType}</summary><p>${escapeHtml(treatmentType)}</p></details>` : ""}
         <div class="detail-grid treatment-details">
           <p class="detail-line">${copy.notes}: ${escapeHtml(String(view.latestTreatment.notes ?? copy.noNotes))}</p>
         </div>
       </section>
     `
     : `
-      <section class="panel empty-panel">
+      <section id="latest-treatment" class="panel empty-panel">
         <div class="panel-header">
-          <p class="eyebrow">Treatment</p>
+          <p class="eyebrow">${copy.treatment}</p>
           <h2>${copy.noTreatments}</h2>
         </div>
         <p class="panel-copy">${copy.noTreatmentsBody}</p>
@@ -398,476 +516,84 @@ export function renderHealthPage(view: HealthViewModel, locale: HealthLocale = "
     <style>
       :root {
         color-scheme: light;
-        --bg-top: #f5fbff;
-        --bg-bottom: #eef4ec;
-        --text: #193046;
-        --muted: #5d7285;
-        --line: rgba(25, 48, 70, 0.1);
-        --panel: rgba(255, 255, 255, 0.82);
-        --panel-strong: #ffffff;
-        --shadow: 0 24px 60px rgba(27, 55, 79, 0.12);
-        --blue: #1264c7;
-        --blue-soft: #eaf4ff;
-        --green: #1f8c5b;
-        --green-soft: #ecfbf3;
-        --gold: #f3b546;
+        --text: #183344;
+        --muted: #506474;
+        --line: #dce5e9;
+        --blue: #145fa8;
+        --green: #16734b;
+        --gold: #8b570c;
+        font-size: 16px;
       }
-      * {
-        box-sizing: border-box;
-      }
+      * { box-sizing: border-box; }
       body {
-        font-family: "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
         margin: 0;
-        min-height: 100vh;
-        padding: 2rem;
-        background:
-          radial-gradient(circle at top left, rgba(18, 100, 199, 0.14), transparent 28%),
-          radial-gradient(circle at top right, rgba(31, 140, 91, 0.1), transparent 24%),
-          linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+        padding: 24px 16px;
+        background: #f3f6f7;
         color: var(--text);
-      }
-      main {
-        max-width: 58rem;
-        margin: 0 auto;
-        padding: 1.6rem;
-        border-radius: 30px;
-        background: rgba(255, 255, 255, 0.58);
-        border: 1px solid rgba(255, 255, 255, 0.7);
-        box-shadow: var(--shadow);
-        backdrop-filter: blur(16px);
-      }
-      h1, h2, p {
-        margin-top: 0;
-      }
-      h1 {
-        margin-bottom: 0.35rem;
-        font-size: clamp(1.7rem, 3vw, 2.3rem);
-        line-height: 1.05;
-        letter-spacing: -0.04em;
-      }
-      h2 {
-        margin-bottom: 0;
-        font-size: 1.25rem;
-        letter-spacing: -0.02em;
-      }
-      .brand-bar {
-        display: flex;
-        align-items: center;
-        justify-content: flex-start;
-        margin-bottom: 1rem;
-        padding: 0.25rem 0 0;
-      }
-      .brand-lockup {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.85rem;
-        padding: 0.9rem 1.1rem;
-        border-radius: 18px;
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(234, 244, 255, 0.9));
-        border: 1px solid rgba(18, 100, 199, 0.1);
-        box-shadow: 0 12px 28px rgba(18, 100, 199, 0.08);
-      }
-      .brand-mark-dot {
-        width: 0.95rem;
-        height: 0.95rem;
-        flex: 0 0 auto;
-        border-radius: 999px;
-        border: 0;
-        padding: 0;
-        cursor: default;
-        background: linear-gradient(135deg, #7c8ea0, #5d7285);
-        box-shadow: 0 0 0 0.32rem rgba(93, 114, 133, 0.14);
-      }
-      .brand-mark-dot.is-live {
-        background: linear-gradient(135deg, #34c37a, #1f8c5b);
-        box-shadow: 0 0 0 0.32rem rgba(31, 140, 91, 0.16);
-      }
-      .brand-mark-dot.is-stale {
-        background: linear-gradient(135deg, #f3b546, #d97706);
-        box-shadow: 0 0 0 0.32rem rgba(217, 119, 6, 0.14);
-      }
-      .brand-mark-dot.is-waiting {
-        background: linear-gradient(135deg, #38a8ff, #1264c7);
-        box-shadow: 0 0 0 0.32rem rgba(18, 100, 199, 0.14);
-      }
-      .brand-mark {
-        margin: 0;
-        color: var(--text);
-        font-size: 1.15rem;
-        font-weight: 900;
-        letter-spacing: -0.03em;
-        line-height: 1;
-      }
-      .brand-mark span {
-        color: var(--blue);
-      }
-      .brand-mark small {
-        color: var(--muted);
-        font-size: 0.78rem;
-        font-weight: 800;
-        letter-spacing: 0.08em;
-        margin-left: 0.55rem;
-        text-transform: uppercase;
-      }
-      .status-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.55rem;
-        padding: 0.55rem 0.8rem;
-        border-radius: 999px;
-        background: rgba(31, 140, 91, 0.08);
-        color: var(--green);
-        font-size: 0.88rem;
-        font-weight: 800;
-        line-height: 1;
-        white-space: nowrap;
-      }
-      .status-badge::before {
-        content: "";
-        width: 0.7rem;
-        height: 0.7rem;
-        border-radius: 999px;
-        background: currentColor;
-        box-shadow: 0 0 0 0.28rem rgba(31, 140, 91, 0.12);
-      }
-      .layout {
-        display: grid;
-        gap: 1rem;
-        margin-top: 1rem;
-      }
-      .panel {
-        padding: 1.4rem;
-        border-radius: 22px;
-        background: var(--panel);
-        border: 1px solid var(--line);
-        box-shadow: 0 10px 30px rgba(25, 48, 70, 0.05);
-      }
-      .status-panel {
-        margin-top: 1rem;
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(246, 250, 252, 0.9));
-        border-color: rgba(18, 100, 199, 0.12);
-      }
-      .status-panel-top {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 0.9rem;
-        margin-bottom: 1rem;
-      }
-      .status-heading {
-        display: flex;
-        flex-direction: column;
-        gap: 0.35rem;
-      }
-      .status-title-row {
-        display: flex;
-        align-items: center;
-        gap: 0.7rem;
-        flex-wrap: wrap;
-      }
-      .system-name {
-        margin: 0;
-        font-size: 1.1rem;
-        font-weight: 800;
-        letter-spacing: -0.02em;
-      }
-      .status-card {
-        padding: 1rem;
-        border-radius: 16px;
-        background: rgba(255, 255, 255, 0.9);
-        border: 1px solid rgba(18, 100, 199, 0.08);
-      }
-      .status-label {
-        margin: 0 0 0.35rem;
-        color: var(--muted);
-        font-size: 0.8rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-      }
-      .repo-copy {
-        display: flex;
-        flex-direction: column;
-        gap: 0.3rem;
-      }
-      .repo-copy p {
-        margin: 0;
-      }
-      .repo-title {
-        font-size: 1rem;
-        font-weight: 800;
-        letter-spacing: -0.02em;
-        color: var(--text);
-      }
-      .repo-body {
-        color: var(--muted);
+        font-family: "Segoe UI", "Helvetica Neue", sans-serif;
         line-height: 1.5;
       }
-      .status-actions {
-        margin-top: 0.9rem;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-      }
-      .repo-card {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 1rem;
-        margin-top: 1rem;
-        background: linear-gradient(135deg, rgba(234, 244, 255, 0.92), rgba(236, 251, 243, 0.92));
-        border-color: rgba(18, 100, 199, 0.12);
-      }
-      .status-link {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.45rem;
-        padding: 0.75rem 0.95rem;
-        border-radius: 999px;
-        background: var(--blue-soft);
-        color: var(--blue);
-        font-weight: 800;
-        text-decoration: none;
-      }
-      .repo-link {
-        white-space: nowrap;
-        background: rgba(255, 255, 255, 0.82);
-        border: 1px solid rgba(18, 100, 199, 0.08);
-      }
-      .reading-panel {
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(238, 247, 255, 0.95));
-        border-color: rgba(18, 100, 199, 0.12);
-        box-shadow: 0 18px 40px rgba(18, 100, 199, 0.08);
-      }
-      .panel-header {
-        margin-bottom: 0.9rem;
-      }
-      .eyebrow {
-        margin-bottom: 0.45rem;
-        color: var(--blue);
-        font-size: 0.78rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-      }
-      .panel-copy,
-      .hint {
-        color: var(--muted);
-        line-height: 1.6;
-      }
-      .ok {
-        color: var(--green);
-        font-weight: 800;
-      }
-      .reading {
-        margin: 0;
-        font-size: clamp(2.5rem, 7vw, 4rem);
-        font-weight: 900;
-        letter-spacing: -0.06em;
-        color: var(--text);
-      }
-      .reading span {
-        color: var(--muted);
-        font-size: 1.1rem;
-        font-weight: 700;
-        letter-spacing: 0;
-      }
-      .reading.is-low {
-        color: #c2410c;
-      }
-      .reading.is-range {
-        color: var(--green);
-      }
-      .reading.is-high {
-        color: #b45309;
-      }
-      .reading.is-neutral {
-        color: var(--text);
-      }
-      .treatment-reading {
-        color: var(--blue);
-      }
-      .treatment-reading span {
-        color: var(--blue);
-      }
-      .reading-row {
-        display: flex;
-        align-items: end;
-        justify-content: space-between;
-        gap: 1rem;
-        flex-wrap: wrap;
-      }
-      .reading-value-group {
-        display: flex;
-        align-items: end;
-        gap: 0.9rem;
-        flex-wrap: wrap;
-      }
-      .pill-stack {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.7rem;
-        justify-content: flex-end;
-      }
-      .reading-delta {
-        margin: 0 0 0.45rem;
-        padding: 0.45rem 0.8rem;
-        border-radius: 999px;
-        background: rgba(25, 48, 70, 0.08);
-        color: var(--text);
-        font-size: 1.05rem;
-        font-weight: 800;
-        line-height: 1;
-      }
-      .reading-delta.is-up {
-        background: rgba(217, 119, 6, 0.12);
-        color: #b45309;
-      }
-      .reading-delta.is-down {
-        background: rgba(37, 99, 235, 0.12);
-        color: #1d4ed8;
-      }
-      .reading-delta.is-neutral {
-        background: rgba(25, 48, 70, 0.08);
-        color: var(--muted);
-      }
-      .reading-meta {
-        margin: 0;
-        color: var(--muted);
-        font-size: 1rem;
-        font-weight: 700;
-        line-height: 1.5;
-      }
-      .pill {
-        margin: 0;
-        padding: 0.75rem 0.95rem;
-        border-radius: 999px;
-        background: var(--blue-soft);
-        color: var(--blue);
-        font-weight: 700;
-      }
-      .direction-arrow {
-        display: inline-block;
-        min-width: 1.2em;
-        text-align: center;
-        font-size: 1em;
-        font-weight: 900;
-        line-height: 1;
-        vertical-align: baseline;
-      }
-      .direction-arrow.is-up {
-        color: #d97706;
-      }
-      .direction-arrow.is-flat {
-        color: var(--green);
-      }
-      .direction-arrow.is-down {
-        color: #2563eb;
-      }
-      .direction-arrow.is-muted {
-        color: var(--muted);
-      }
-      .detail-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 0.8rem;
-      }
-      .treatment-type {
-        margin: 1rem 0 0.85rem;
-        font-size: 1.55rem;
-        font-weight: 800;
-        letter-spacing: -0.03em;
-      }
-      .treatment-details {
-        grid-template-columns: 1fr;
-      }
-      .detail-line {
-        margin: 0;
-        padding: 1rem;
-        border-radius: 16px;
-        background: rgba(255, 255, 255, 0.95);
-        border: 1px solid var(--line);
-        line-height: 1.5;
-      }
-      .detail-wide {
-        grid-column: 1 / -1;
-      }
-      .reception-panel {
-        grid-column: 1 / -1;
-      }
-      .reception-panel time {
-        overflow-wrap: anywhere;
-      }
-      .future-warning {
-        padding: 1rem;
-        border-radius: 16px;
-        background: #fff5df;
-        color: #6f490a;
-      }
-      .setup {
-        background: linear-gradient(180deg, #f4faff, #eef7ff);
-        border-color: rgba(18, 100, 199, 0.18);
-      }
-      .setup-ready {
-        background: linear-gradient(180deg, #f1fff7, #ebfbf3);
-        border-color: rgba(31, 140, 91, 0.2);
-      }
-      .treatment-panel {
-        background: linear-gradient(180deg, #f6fbff, #eef6ff);
-        border-color: rgba(18, 100, 199, 0.16);
-      }
-      .empty-panel {
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(247, 250, 252, 0.92));
-      }
-      code {
-        display: block;
-        margin: 0.75rem 0 0;
-        padding: 0.95rem 1rem;
-        border-radius: 16px;
-        background: #f4f8fc;
-        border: 1px solid rgba(25, 48, 70, 0.08);
-        overflow-wrap: anywhere;
-        color: #23415f;
-        font-family: "SFMono-Regular", "Cascadia Code", "Liberation Mono", monospace;
-      }
-      button {
-        margin-top: 1rem;
-        border: 0;
-        border-radius: 999px;
-        padding: 0.9rem 1.2rem;
-        background: linear-gradient(135deg, #1670d8, #0b5dbb);
-        color: #fff;
-        font: inherit;
-        font-weight: 800;
-        cursor: pointer;
-        box-shadow: 0 12px 24px rgba(11, 93, 187, 0.22);
-      }
-      a {
-        color: var(--blue);
-        font-weight: 700;
-        text-underline-offset: 0.18em;
-      }
-      .status-panel p:last-child {
-        margin-bottom: 0;
-      }
+      main { max-width: 720px; margin: 0 auto; }
+      h1, h2, h3, p { margin: 0; }
+      h2 { font-size: 1rem; font-weight: 650; letter-spacing: -0.01em; }
+      h3 { font-size: 1rem; margin: 16px 0 8px; }
+      p, code, time, li { overflow-wrap: anywhere; }
+      .brand-bar { margin-bottom: 16px; }
+      .brand-lockup { display: flex; align-items: center; gap: 12px; }
+      .brand-mark { font-size: 1.25rem; font-weight: 750; letter-spacing: -0.04em; }
+      .brand-mark span { color: var(--blue); }
+      .brand-mark small { font-size: 0.7rem; letter-spacing: 0.08em; color: var(--muted); margin-left: 8px; }
+      .brand-mark-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+      .layout { display: grid; gap: 12px; }
+      .panel { padding: 20px; border: 1px solid var(--line); border-radius: 16px; background: #fff; min-width: 0; }
+      .panel-header { margin-bottom: 12px; }
+      .eyebrow { display: none; }
+      .reading-panel { border-top: 3px solid var(--blue); }
+      .reading-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+      .reading-value-group { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+      .reading { font-size: clamp(2.5rem, 7vw, 3.25rem); font-weight: 750; line-height: 1.1; letter-spacing: -0.04em; }
+      .reading span { font-size: 0.85rem; font-weight: 550; letter-spacing: 0; }
+      .reading .direction-arrow { font-size: 1.75rem; }
+      .reading-delta { font-size: 1rem; font-weight: 650; }
+      .is-range, .is-flat, .is-down { color: var(--green); }
+      .is-low, .is-high { color: var(--gold); }
+      .is-up { color: var(--blue); }
+      .is-muted, .is-neutral { color: var(--muted); }
+      .pill-stack { min-width: 0; }
+      .reading-meta, .pill { color: var(--muted); font-size: 0.875rem; }
+      .freshness { margin-top: 12px; font-size: 0.875rem; font-weight: 650; }
+      .disclaimer { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 0.75rem; color: var(--muted); }
+      .treatment-panel { border-left: 3px solid var(--blue); }
+      .treatment-reading { font-size: 1.75rem; }
+      .treatment-type { margin-top: 8px; font-weight: 650; }
+      .treatment-date { margin-top: 8px; font-size: 0.875rem; color: var(--muted); }
+      .treatment-details { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+      .detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+      .detail-line { font-size: 0.875rem; }
+      .detail-line strong { font-weight: 650; }
+      .hint, .panel-copy, .repo-body { margin-top: 8px; color: var(--muted); font-size: 0.875rem; }
+      .future-warning { margin-top: 12px; padding: 12px; background: #fff4de; color: #704807; border-radius: 8px; font-size: 0.875rem; }
+      details { margin-top: 12px; }
+      summary { cursor: pointer; color: var(--blue); font-weight: 650; font-size: 0.875rem; min-height: 36px; padding: 8px 0; }
+      details > p, details > .detail-grid { margin-top: 12px; }
+      summary:hover { text-decoration: underline; text-underline-offset: 3px; }
+      .status-panel { margin-top: 12px; background: #eef3f5; }
+      .status-panel-top { display: none; }
+      .status-actions { margin-bottom: 16px; }
+      .status-label { font-size: 0.875rem; font-weight: 650; }
+      .repo-title { display: none; }
+      .repo-link { display: inline-block; margin-top: 12px; }
+      .setup { background: #eef6ff; border-color: #bdd4e9; }
+      .setup-ready { background: #f0faf4; border-color: #bddcc9; }
+      code { display: block; margin-top: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: #f6f8f9; color: var(--text); white-space: pre-wrap; font-size: 0.875rem; }
+      button { margin-top: 16px; padding: 12px 16px; border: 0; border-radius: 8px; background: var(--blue); color: #fff; font: inherit; font-weight: 650; cursor: pointer; }
+      a { color: var(--blue); font-weight: 650; text-underline-offset: 3px; }
+      :focus-visible { outline: 3px solid var(--blue); outline-offset: 4px; border-radius: 4px; }
+      ul { margin: 8px 0; padding-left: 20px; font-size: 0.875rem; }
       @media (max-width: 720px) {
-        body {
-          padding: 1rem;
-        }
-        main {
-          padding: 1rem;
-          border-radius: 24px;
-        }
-        .status-panel-top {
-          align-items: flex-start;
-        }
-        .repo-card {
-          align-items: flex-start;
-          flex-direction: column;
-        }
-        .detail-grid {
-          grid-template-columns: 1fr;
-        }
+        body { padding: 16px 12px; }
+        .panel { padding: 16px; }
+        .detail-grid { grid-template-columns: 1fr; }
       }
     </style>
   </head>
@@ -881,19 +607,19 @@ export function renderHealthPage(view: HealthViewModel, locale: HealthLocale = "
             aria-label="${serviceState.label}"
             title="${serviceState.label}"
           ></span>
-          <p class="brand-mark">Gluco<span>Easy</span> <small>CGM</small></p>
+          <h1 class="brand-mark">Gluco<span>Easy</span> <small>CGM</small></h1>
         </div>
       </div>
       <div class="layout">
         ${setupBlock}
-        ${receptionBlock}
         ${latestBlock}
         ${latestTreatmentBlock}
+        ${receptionBlock}
       </div>
-      <section class="panel status-panel">
+      <section id="service-info" class="panel status-panel">
         <div class="status-panel-top">
           <div class="status-heading">
-            <p class="eyebrow">System</p>
+            <p class="eyebrow">${copy.system}</p>
             <div class="status-title-row">
               <p class="system-name">${copy.title}</p>
               <div class="status-badge">${copy.status}</div>
@@ -901,15 +627,15 @@ export function renderHealthPage(view: HealthViewModel, locale: HealthLocale = "
           </div>
         </div>
         <div class="status-actions">
-          <a class="status-link" href="/api/v1/status.json">${copy.viewStatusJson}</a>
+          <a id="status-link" class="status-link" href="/api/v1/status.json">${copy.viewStatusJson}</a>
         </div>
         <div class="status-card repo-card">
           <div class="repo-copy">
             <p class="status-label">${copy.openSource}</p>
-            <p class="repo-title">GlucoEasy source code</p>
+            <p class="repo-title">${locale === "es" ? "Código de GlucoEasy" : "GlucoEasy source code"}</p>
             <p class="repo-body">${copy.openSourceBody}</p>
           </div>
-          <a class="status-link repo-link" href="https://github.com/HankScorpi0/GlucoEasy" target="_blank" rel="noopener noreferrer">${copy.viewRepository}</a>
+          <a id="repository-link" class="status-link repo-link" href="https://github.com/HankScorpi0/GlucoEasy" target="_blank" rel="noopener noreferrer">${copy.viewRepository}</a>
         </div>
       </section>
     </main>

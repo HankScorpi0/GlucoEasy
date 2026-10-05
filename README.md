@@ -22,7 +22,7 @@ GlucoEasy keeps the essentials:
 Spanish version: see [README.es.md](README.es.md).  
 Technical guide: see [README.technical.md](README.technical.md).
 
-![English health page example](docs/images/health-en.png)
+![English health page example with synthetic data](docs/images/003-redesign-homepage/health-en.png)
 
 ## Important Warning
 
@@ -35,6 +35,10 @@ Technical guide: see [README.technical.md](README.technical.md).
 ### Reception diagnostics
 
 Dates use your browser’s local time zone, including its zone label. With JavaScript disabled, the ISO UTC timestamp remains visible.
+
+The page puts the latest reading and its age first, then the latest treatment, reception and service links. On a 360 × 800 mobile screen at the default text size, the reading and treatment summary (type, date and insulin when present) are visible without scrolling after setup. Full notes remain below the treatment summary. Pending setup takes priority until it is completed.
+
+Reception status and warnings stay visible. Open **Reception details** to see timestamps, delays and rejection categories; this section starts closed. Automatic refresh preserves its open/closed state, your position and focus using temporary presentation metadata, without saving readings, treatments or credentials in the browser. If the browser blocks both session storage and history state, refresh still works but cannot preserve that context. Native details and the displayed data remain usable with JavaScript disabled; automatic refresh requires JavaScript.
 
 The health pages distinguish server availability now, the last accepted upload (readings, treatments or profile), and reading freshness. A newly accepted upload may contain old readings. A reading is recent up to the larger of five minutes and twice the page refresh interval, including the boundary.
 
@@ -173,14 +177,14 @@ https://your-worker.workers.dev/es/health
 
 English `health` page example:
 
-![English health page example](docs/images/health-en.png)
+![English health page example with synthetic data](docs/images/003-redesign-homepage/health-en.png)
 
 You should see:
 
-- the latest glucose reading
-- the latest treatment, if any
-- how many readings are stored
-- how many treatments are stored
+- the latest glucose reading, direction when available and its age
+- the latest treatment summary, followed by its full notes, or an explicit empty state
+- reception status and warnings, with technical details available on demand
+- service information and links below the main data
 
 You can also check:
 

@@ -22,7 +22,7 @@ GlucoEasy se centra en lo esencial:
 Versión en inglés: ver [README.md](README.md).  
 Guía técnica: ver [README.technical.es.md](README.technical.es.md).
 
-![Pantalla health en español](docs/images/health-es.png)
+![Pantalla health en español con datos sintéticos](docs/images/003-redesign-homepage/health-es.png)
 
 ## Advertencia Importante
 
@@ -37,6 +37,10 @@ Guía técnica: ver [README.technical.es.md](README.technical.es.md).
 Las fechas usan la zona horaria local de tu navegador y muestran su indicación de zona. Con JavaScript desactivado se conserva la fecha ISO en UTC.
 
 Las páginas de estado distinguen disponibilidad del servidor ahora, último envío aceptado (lecturas, tratamientos o perfil) y actualidad de lecturas. Un envío recién aceptado puede contener lecturas antiguas. Una lectura es reciente hasta el mayor entre cinco minutos y dos intervalos de refresco de la página, incluido el límite.
+
+La página muestra primero la última lectura y su antigüedad, después el último tratamiento, la recepción y los enlaces del servicio. En una pantalla móvil de 360 × 800 y con texto predeterminado, la lectura y el resumen del tratamiento (tipo, fecha e insulina cuando exista) se ven sin desplazarse una vez completada la configuración. Las notas completas quedan debajo del resumen del tratamiento. La configuración pendiente tiene prioridad hasta completarse.
+
+El estado y los avisos de recepción permanecen visibles. Abre **Detalles de recepción** para consultar fechas, retrasos y categorías de rechazo; esta sección empieza cerrada. El refresco automático conserva su apertura, tu posición y el foco mediante metadatos temporales de presentación, sin guardar lecturas, tratamientos ni credenciales en el navegador. Si el navegador bloquea tanto el almacenamiento por pestaña como el estado del historial, el refresco sigue funcionando pero no puede conservar ese contexto. El desplegable nativo y los datos mostrados siguen siendo utilizables sin JavaScript; el refresco automático requiere JavaScript.
 
 Fecha y antigüedad de lectura se separan de primera recepción conocida y retraso de recepción. Reenviar datos actualiza el último envío aceptado sin cambiar la primera recepción de esa lectura. La recepción es desconocida para datos anteriores a esta función. Las lecturas futuras siguen almacenadas y disponibles para clientes, pero se excluyen de actualidad y generan aviso de reloj; solo datos futuros se distingue de una instalación vacía.
 
@@ -173,14 +177,14 @@ https://tu-worker.workers.dev/es/health
 
 Ejemplo de la pantalla de estado en español:
 
-![Pantalla health en español](docs/images/health-es.png)
+![Pantalla health en español con datos sintéticos](docs/images/003-redesign-homepage/health-es.png)
 
 Deberías ver:
 
-- la última lectura de glucosa
-- el último tratamiento, si existe
-- cuántas lecturas hay guardadas
-- cuántos tratamientos hay guardados
+- la última lectura de glucosa, su dirección cuando exista y su antigüedad
+- el resumen del último tratamiento y después sus notas completas, o un estado vacío explícito
+- el estado y los avisos de recepción, con detalles técnicos disponibles al abrirlos
+- información y enlaces del servicio debajo de los datos principales
 
 También puedes revisar:
 

@@ -19,6 +19,38 @@ function receptionStub() {
   return env.ENTRIES_DO.get(env.ENTRIES_DO.idFromName("global"));
 }
 
+describe("redesigned health access and setup", () => {
+  it.each(["en", "es"] as const)("preserves setup priority and private access in %s", async (locale) => {
+    const path = locale === "es" ? "/es/health" : "/health";
+    const first = await SELF.fetch(`https://example.com${path}`);
+    const cookie = first.headers.get("Set-Cookie")!.split(";", 1)[0];
+    const firstHtml = await first.text();
+    const secret = firstHtml.match(/<code>([a-z2-9]{6})<\/code>/)![1];
+    expect(firstHtml.indexOf('class="panel setup')).toBeLessThan(firstHtml.indexOf('id="latest-reading"'));
+    expect(firstHtml).not.toContain("window.setTimeout");
+    const publicSetting = env.READ_PUBLIC;
+    try {
+      env.READ_PUBLIC = "true";
+      const other = await SELF.fetch(`https://example.com${path}`);
+      const otherHtml = await other.text();
+      expect(otherHtml).not.toContain(`<code>${secret}</code>`);
+      expect(otherHtml).not.toContain("window.setTimeout");
+      await SELF.fetch(`https://example.com${locale === "es" ? "/es" : ""}/setup/acknowledge`, { method: "POST", headers: { Cookie: cookie }, redirect: "manual" });
+      const subsequentHtml = await (await SELF.fetch(`https://example.com${path}`)).text();
+      expect(subsequentHtml).not.toContain(`<code>${secret}</code>`);
+      const ids = ["latest-reading", "latest-treatment", "reception", "service-info"].map((id) => subsequentHtml.indexOf(`id="${id}"`));
+      expect(ids.every((index) => index >= 0)).toBe(true);
+      expect(ids).toEqual([...ids].sort((a, b) => a - b));
+      expect(subsequentHtml).toContain('href="/api/v1/status.json"');
+      env.READ_PUBLIC = "false";
+      expect((await SELF.fetch(`https://example.com${path}`)).status).toBe(401);
+      expect((await SELF.fetch(`https://example.com${path}`, { headers: secretHeader(secret) })).status).toBe(200);
+    } finally {
+      env.READ_PUBLIC = publicSetting;
+    }
+  });
+});
+
 async function receptionSnapshot(): Promise<HealthReceptionSnapshot> {
   const response = await receptionStub().fetch("https://entries.internal/health/snapshot");
   expect(response.ok).toBe(true);
@@ -734,7 +766,7 @@ describe("api", () => {
     expect(setupCookie).toContain("glucoeasy_setup=");
     const setupHtml = await setupResponse.text();
     expect(setupHtml).toContain('<html lang="es">');
-    expect(setupHtml).toContain("Configuracion completada");
+    expect(setupHtml).toContain("Configuración completada");
     expect(setupHtml).toContain('action="/es/setup/acknowledge"');
     const secretMatch = setupHtml.match(/<code>([a-z2-9]{6})<\/code>/);
     expect(secretMatch?.[1]).toBeTruthy();
@@ -766,7 +798,7 @@ describe("api", () => {
     expect(response.status).toBe(200);
     const html = await response.text();
     expect(html).toContain("GlucoEasy");
-    expect(html).toContain("Ultimo tratamiento");
+    expect(html).toContain("Último tratamiento");
     expect(html).toContain("Ver datos de estado");
     expect(html).toContain('class="reading treatment-reading">1.2 <span>U</span>');
     expect(html).toContain("Antigüedad de tratamiento:");
