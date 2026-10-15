@@ -22,7 +22,7 @@ GlucoEasy keeps the essentials:
 Spanish version: see [README.es.md](README.es.md).  
 Technical guide: see [README.technical.md](README.technical.md).
 
-![English health page example with synthetic data](docs/images/003-redesign-homepage/health-en.png)
+![English health page example with synthetic data](docs/images/004-technical-ui-redesign/health-en-mobile.png)
 
 ## Important Warning
 
@@ -36,7 +36,7 @@ Technical guide: see [README.technical.md](README.technical.md).
 
 Dates use your browser’s local time zone, including its zone label. With JavaScript disabled, the ISO UTC timestamp remains visible.
 
-The page puts the latest reading and its age first, then the latest treatment, reception and service links. On a 360 × 800 mobile screen at the default text size, the reading and treatment summary (type, date and insulin when present) are visible without scrolling after setup. Full notes remain below the treatment summary. Pending setup takes priority until it is completed.
+The page uses a fixed dark graphite theme with cool accents, monospaced values and clearly separated sections. It stays dark regardless of your device's appearance preference and has no theme selector. It puts the latest reading and its age first, then the latest treatment, reception and service links. On a 360 × 800 mobile screen at the default text size, the reading and treatment summary (type, date and insulin when present) are visible without scrolling after setup. Full notes remain below the treatment summary. Pending setup takes priority until it is completed.
 
 Reception status and warnings stay visible. Open **Reception details** to see timestamps, delays and rejection categories; this section starts closed. Automatic refresh preserves its open/closed state, your position and focus using temporary presentation metadata, without saving readings, treatments or credentials in the browser. If the browser blocks both session storage and history state, refresh still works but cannot preserve that context. Native details and the displayed data remain usable with JavaScript disabled; automatic refresh requires JavaScript.
 
@@ -48,7 +48,7 @@ Rejected uploads are counted once per request: authentication/setup, oversized b
 
 Diagnostics appear only on `/health` and `/es/health`; client status is unchanged. With `READ_PUBLIC=true` (deployment default), anyone knowing the URL can view health data and these summaries. Set it to `false` to require authentication after setup. Instrumentation adds writes and an internal call per rejected upload; it does not guarantee free operation or continuous availability. Parser/storage errors use safe generic messages with existing response codes and formats.
 
-![Reception diagnostics with synthetic data](docs/images/reception-diagnostics-en-desktop.png)
+![Reception diagnostics with synthetic data](docs/images/004-technical-ui-redesign/reception-en-desktop.png)
 
 This project is for you if:
 
@@ -177,7 +177,7 @@ https://your-worker.workers.dev/es/health
 
 English `health` page example:
 
-![English health page example with synthetic data](docs/images/003-redesign-homepage/health-en.png)
+![English health page example with synthetic data](docs/images/004-technical-ui-redesign/health-en-mobile.png)
 
 You should see:
 

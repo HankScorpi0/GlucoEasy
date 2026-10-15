@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { renderHealthPage } from "../src/health";
 import { normalizeEntry } from "../src/entries";
 import { createReceptionSummary, selectHealthSnapshot } from "../src/reception";
+import { createHealthFixture } from "./fixtures/health";
 
 const now = 1800000000000;
 const refreshKey = "glucoeasy.health.refresh.v1";
@@ -104,6 +105,21 @@ describe("health refresh continuity", () => {
   });
 });
 describe("health page information hierarchy", () => {
+  it.each(["en", "es"] as const)("retains the representative reading and treatment fields in %s", (locale) => {
+    const view = createHealthFixture("recent");
+    const html = renderHealthPage(view, locale);
+    const reading = html.slice(html.indexOf('id="latest-reading"'), html.indexOf('id="latest-treatment"'));
+    const treatment = html.slice(html.indexOf('id="latest-treatment"'), html.indexOf('id="reception"'));
+    for (const value of ["123", "mg/dL", "→", "+3", locale === "es" ? "1 minuto" : "1 minute"]) {
+      expect(reading).toContain(value);
+    }
+    for (const value of ["1.2", "Correction Bolus", "Synthetic example · Backup upload", view.latestTreatment!.created_at]) {
+      expect(treatment).toContain(value);
+    }
+    expect(reading).toContain(locale === "es" ? "No es un dispositivo médico" : "Not a medical device");
+    expect(html).toContain('id="status-link"');
+    expect(html).toContain('id="repository-link"');
+  });
   it.each(["en", "es"] as const)("keeps treatment before reception, including empty states in %s", (locale) => {
     const html = renderHealthPage({ latest: null, count: 0, baseUrl: "https://example.com" }, locale);
     const ids = ["latest-reading", "latest-treatment", "reception", "service-info"].map((id) => html.indexOf(`id="${id}"`));

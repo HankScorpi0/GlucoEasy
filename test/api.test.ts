@@ -20,6 +20,41 @@ function receptionStub() {
 }
 
 describe("redesigned health access and setup", () => {
+  it.each(["en", "es"] as const)("rejects unauthorized confirmation without consuming the authorized reveal in %s", async (locale) => {
+    const { secret, cookie } = await initializeSetup();
+    const prefix = locale === "es" ? "/es" : "";
+    const response = await SELF.fetch(`https://example.com${prefix}/setup/acknowledge`, {
+      method: "POST", headers: { Cookie: "glucoeasy_setup=synthetic-invalid-token" }, redirect: "manual"
+    });
+    expect(response.status).toBe(403);
+    const html = await response.text();
+    expect(html).not.toContain(`<code>${secret}</code>`);
+    expect(html).not.toContain("window.setTimeout");
+    expect(html).toContain(locale === "es" ? "La configuración ya fue inicializada" : "Setup already initialized");
+    const authorized = await SELF.fetch(`https://example.com${prefix}/health`, { headers: { Cookie: cookie } });
+    expect(await authorized.text()).toContain(`<code>${secret}</code>`);
+    await acknowledgeSetup(cookie);
+  });
+
+  it.each(["en", "es"] as const)("preserves manual secret precedence without revealing credentials in %s", async (locale) => {
+    const { secret: generatedSecret, cookie } = await initializeSetup();
+    const path = locale === "es" ? "/es/health" : "/health";
+    const manualSecret = "synthetic-manual-secret";
+    const manualEnv = { ...env, API_SECRET: manualSecret, READ_PUBLIC: "false" };
+    const denied = await worker.fetch(new Request(`https://example.com${path}`, {
+      headers: { ...secretHeader(generatedSecret), Cookie: cookie }
+    }), manualEnv);
+    expect(denied.status).toBe(401);
+    const allowed = await worker.fetch(new Request(`https://example.com${path}`, {
+      headers: secretHeader(manualSecret)
+    }), manualEnv);
+    expect(allowed.status).toBe(200);
+    const html = await allowed.text();
+    expect(html).not.toContain(manualSecret);
+    expect(html).not.toContain(generatedSecret);
+    expect(html).toContain("window.setTimeout");
+  });
+
   it.each(["en", "es"] as const)("preserves setup priority and private access in %s", async (locale) => {
     const path = locale === "es" ? "/es/health" : "/health";
     const first = await SELF.fetch(`https://example.com${path}`);

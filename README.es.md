@@ -22,7 +22,7 @@ GlucoEasy se centra en lo esencial:
 Versión en inglés: ver [README.md](README.md).  
 Guía técnica: ver [README.technical.es.md](README.technical.es.md).
 
-![Pantalla health en español con datos sintéticos](docs/images/003-redesign-homepage/health-es.png)
+![Pantalla health en español con datos sintéticos](docs/images/004-technical-ui-redesign/health-es-mobile.png)
 
 ## Advertencia Importante
 
@@ -38,7 +38,7 @@ Las fechas usan la zona horaria local de tu navegador y muestran su indicación 
 
 Las páginas de estado distinguen disponibilidad del servidor ahora, último envío aceptado (lecturas, tratamientos o perfil) y actualidad de lecturas. Un envío recién aceptado puede contener lecturas antiguas. Una lectura es reciente hasta el mayor entre cinco minutos y dos intervalos de refresco de la página, incluido el límite.
 
-La página muestra primero la última lectura y su antigüedad, después el último tratamiento, la recepción y los enlaces del servicio. En una pantalla móvil de 360 × 800 y con texto predeterminado, la lectura y el resumen del tratamiento (tipo, fecha e insulina cuando exista) se ven sin desplazarse una vez completada la configuración. Las notas completas quedan debajo del resumen del tratamiento. La configuración pendiente tiene prioridad hasta completarse.
+La página usa un tema oscuro grafito fijo con acentos fríos, valores monoespaciados y secciones bien separadas. Se mantiene oscura independientemente de la preferencia de apariencia del dispositivo y no tiene selector de tema. Muestra primero la última lectura y su antigüedad, después el último tratamiento, la recepción y los enlaces del servicio. En una pantalla móvil de 360 × 800 y con texto predeterminado, la lectura y el resumen del tratamiento (tipo, fecha e insulina cuando exista) se ven sin desplazarse una vez completada la configuración. Las notas completas quedan debajo del resumen del tratamiento. La configuración pendiente tiene prioridad hasta completarse.
 
 El estado y los avisos de recepción permanecen visibles. Abre **Detalles de recepción** para consultar fechas, retrasos y categorías de rechazo; esta sección empieza cerrada. El refresco automático conserva su apertura, tu posición y el foco mediante metadatos temporales de presentación, sin guardar lecturas, tratamientos ni credenciales en el navegador. Si el navegador bloquea tanto el almacenamiento por pestaña como el estado del historial, el refresco sigue funcionando pero no puede conservar ese contexto. El desplegable nativo y los datos mostrados siguen siendo utilizables sin JavaScript; el refresco automático requiere JavaScript.
 
@@ -48,7 +48,7 @@ Los rechazos se cuentan una vez por petición: autenticación/configuración, cu
 
 El diagnóstico aparece solo en `/health` y `/es/health`; el estado para clientes no cambia. Con `READ_PUBLIC=true` (predeterminado del despliegue), cualquiera con la URL puede consultar datos de salud y resúmenes. Usa `false` para exigir autenticación después de configurar. La instrumentación añade escrituras y una llamada interna por rechazo; no garantiza gratuidad ni disponibilidad continua. Los errores del parser/almacenamiento usan mensajes genéricos seguros con los códigos y formatos existentes.
 
-![Diagnóstico de recepción con datos sintéticos](docs/images/reception-diagnostics-es-desktop.png)
+![Diagnóstico de recepción con datos sintéticos](docs/images/004-technical-ui-redesign/reception-es-desktop.png)
 
 Este proyecto es para ti si:
 
@@ -177,7 +177,7 @@ https://tu-worker.workers.dev/es/health
 
 Ejemplo de la pantalla de estado en español:
 
-![Pantalla health en español con datos sintéticos](docs/images/003-redesign-homepage/health-es.png)
+![Pantalla health en español con datos sintéticos](docs/images/004-technical-ui-redesign/health-es-mobile.png)
 
 Deberías ver:
 
