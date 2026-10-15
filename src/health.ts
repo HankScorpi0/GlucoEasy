@@ -9,9 +9,6 @@ interface HealthCopy {
   minutes: (count: number) => string;
   hour: string;
   hours: (count: number) => string;
-  serviceLive: string;
-  serviceStale: string;
-  serviceWaiting: string;
   setupComplete: string;
   setupCompleteBody: string;
   useUrl: string;
@@ -19,7 +16,6 @@ interface HealthCopy {
   setupInitialized: string;
   setupInitializedBody: string;
   latestReading: string;
-  receivedAgo: string;
   direction: string;
   noData: string;
   noReadings: string;
@@ -32,8 +28,6 @@ interface HealthCopy {
   noNotes: string;
   noTreatments: string;
   noTreatmentsBody: string;
-  title: string;
-  status: string;
   viewStatusJson: string;
   openSource: string;
   openSourceBody: string;
@@ -41,7 +35,6 @@ interface HealthCopy {
   glucose: string;
   treatment: string;
   setup: string;
-  system: string;
   readingAge: string;
   treatmentAge: string;
   treatmentDate: string;
@@ -51,6 +44,8 @@ interface HealthCopy {
   disclaimer: string;
   receptionDetails: string;
   fullTreatmentType: string;
+  backupMonitor: string;
+  readingChange: string;
 }
 
 const COPY: Record<HealthLocale, HealthCopy> = {
@@ -60,9 +55,6 @@ const COPY: Record<HealthLocale, HealthCopy> = {
     minutes: (count) => `${count} minutes`,
     hour: "1 hour",
     hours: (count) => `${count} hours`,
-    serviceLive: "Service active",
-    serviceStale: "Service stale",
-    serviceWaiting: "Waiting for data",
     setupComplete: "Setup complete",
     setupCompleteBody: "Save this secret code now. For security reasons it will only be shown this one time.",
     useUrl: "Use this xDrip+ URL:",
@@ -70,7 +62,6 @@ const COPY: Record<HealthLocale, HealthCopy> = {
     setupInitialized: "Setup already initialized",
     setupInitializedBody: "The one-time secret code screen has already been opened in another browser session.",
     latestReading: "Latest reading",
-    receivedAgo: "Received",
     direction: "Direction",
     noData: "No data",
     noReadings: "No readings received yet.",
@@ -83,8 +74,6 @@ const COPY: Record<HealthLocale, HealthCopy> = {
     noNotes: "No notes",
     noTreatments: "No treatments received yet.",
     noTreatmentsBody: "GlucoEasy will show the most recent treatment here so this service can stay ready as a simple fallback.",
-    title: "GlucoEasy",
-    status: "Status",
     viewStatusJson: "View status data",
     openSource: "Secondary service purpose",
     openSourceBody: "GlucoEasy is designed as an easy secondary service for apps like xDrip+ and Zukkah, with free Cloudflare deployment.",
@@ -92,7 +81,6 @@ const COPY: Record<HealthLocale, HealthCopy> = {
     glucose: "Glucose",
     treatment: "Treatment",
     setup: "Setup",
-    system: "System",
     readingAge: "Reading age",
     treatmentAge: "Treatment age",
     treatmentDate: "Date",
@@ -101,7 +89,9 @@ const COPY: Record<HealthLocale, HealthCopy> = {
     unavailable: "Reading freshness unavailable",
     disclaimer: "Informational backup only. Not a medical device; do not use for dosing or treatment decisions.",
     receptionDetails: "Reception details",
-    fullTreatmentType: "Full treatment type"
+    fullTreatmentType: "Full treatment type",
+    backupMonitor: "Backup monitor",
+    readingChange: "Change"
   },
   es: {
     lessThanOneMinute: "menos de 1 minuto",
@@ -109,9 +99,6 @@ const COPY: Record<HealthLocale, HealthCopy> = {
     minutes: (count) => `${count} minutos`,
     hour: "1 hora",
     hours: (count) => `${count} horas`,
-    serviceLive: "Servicio activo",
-    serviceStale: "Servicio sin datos recientes",
-    serviceWaiting: "Esperando datos",
     setupComplete: "Configuración completada",
     setupCompleteBody: "Guarda este código secreto ahora. Por seguridad solo se mostrará esta única vez.",
     useUrl: "Usa esta URL de xDrip+:",
@@ -119,7 +106,6 @@ const COPY: Record<HealthLocale, HealthCopy> = {
     setupInitialized: "La configuración ya fue inicializada",
     setupInitializedBody: "La pantalla del código secreto de un solo uso ya fue vista en otra sesión del navegador.",
     latestReading: "Última lectura",
-    receivedAgo: "Recibido hace",
     direction: "Dirección",
     noData: "Sin datos",
     noReadings: "Todavía no se han recibido lecturas.",
@@ -132,8 +118,6 @@ const COPY: Record<HealthLocale, HealthCopy> = {
     noNotes: "Sin notas",
     noTreatments: "Todavía no se han recibido tratamientos.",
     noTreatmentsBody: "GlucoEasy mostrará aquí el tratamiento más reciente para que este servicio esté listo como respaldo sencillo.",
-    title: "GlucoEasy",
-    status: "Estado",
     viewStatusJson: "Ver datos de estado",
     openSource: "Finalidad del servicio",
     openSourceBody: "GlucoEasy está pensado como servicio secundario para apps como xDrip+ y Zukkah, con despliegue gratis en Cloudflare y una instalación muy simple.",
@@ -141,7 +125,6 @@ const COPY: Record<HealthLocale, HealthCopy> = {
     glucose: "Glucosa",
     treatment: "Tratamiento",
     setup: "Configuración",
-    system: "Sistema",
     readingAge: "Antigüedad de lectura",
     treatmentAge: "Antigüedad de tratamiento",
     treatmentDate: "Fecha",
@@ -150,7 +133,9 @@ const COPY: Record<HealthLocale, HealthCopy> = {
     unavailable: "Actualidad de lectura no disponible",
     disclaimer: "Respaldo informativo. No es un dispositivo médico; no sirve para dosificación ni decisiones de tratamiento.",
     receptionDetails: "Detalles de recepción",
-    fullTreatmentType: "Tipo de tratamiento completo"
+    fullTreatmentType: "Tipo de tratamiento completo",
+    backupMonitor: "Monitor de respaldo",
+    readingChange: "Variación"
   }
 };
 
@@ -267,7 +252,7 @@ function renderReceptionPanel(view: HealthViewModel, locale: HealthLocale, refre
   const pick = (en: string, spanish: string) => es ? spanish : en;
   const available = pick("Server available", "Servidor disponible");
   const title = pick("Reception diagnostics", "Diagnóstico de recepción");
-  const header = `<div class="panel-header"><p class="eyebrow">${pick("Reception", "Recepción")}</p><h2>${title}</h2></div>`;
+  const header = `<div class="panel-header"><span class="panel-index" aria-hidden="true">03</span><h2>${title}</h2><span class="panel-category">${pick("Reception", "Recepción")}</span></div>`;
   const snapshot = view.reception;
   if (!snapshot) {
     return `<section id="reception" class="panel reception-panel">${header}<p>${available}</p><p class="hint">${pick("Reception diagnostics unavailable", "Diagnóstico de recepción no disponible")}</p></section>`;
@@ -293,8 +278,9 @@ function renderReceptionPanel(view: HealthViewModel, locale: HealthLocale, refre
   const atLeast = pick("at least ", "al menos ");
   const detail = (label: string, value: string) => `<p class="detail-line"><strong>${label}</strong><br>${value}</p>`;
   return `<section id="reception" class="panel reception-panel">${header}
-    <p>${available} · ${states[evaluation.readingState]}</p>
+    <div class="reception-summary-row"><p>${available} · ${states[evaluation.readingState]}</p>
     <p class="hint">${pick("Rejected uploads", "Envíos rechazados")}: ${evaluation.totalSaturated ? atLeast : ""}${evaluation.rejectionTotal}</p>
+    </div>
     ${snapshot.futureCount ? `<p class="future-warning" role="status"><strong>${pick("Future timestamps", "Fechas futuras")}: ${snapshot.futureCount}</strong> · ${pick("Excluded from reading freshness. Check the sender's clock.", "Excluidas de la actualidad de lecturas. Revisa el reloj del remitente.")}</p>` : ""}
     <details id="reception-details">
     <summary id="reception-summary">${copy.receptionDetails}</summary>
@@ -445,19 +431,20 @@ export function renderHealthPage(view: HealthViewModel, locale: HealthLocale = "
     ? `
       <section id="latest-reading" class="panel reading-panel">
         <div class="panel-header">
-          <p class="eyebrow">${copy.glucose}</p>
+          <span class="panel-index" aria-hidden="true">01</span>
           <h2>${copy.latestReading}</h2>
+          <span class="panel-category">${copy.glucose}</span>
         </div>
         <div class="reading-row">
           <div class="reading-value-group">
-            <p class="reading ${latestGlucoseTone}">${view.latest.sgv} <span>mg/dL</span> <span class="direction-arrow ${latestDirectionTone}">${escapeHtml(extendedDirection ? copy.noData : latestDirection)}</span></p>
-            ${latestDelta ? `<p class="reading-delta ${latestDeltaTone}">${latestDelta}</p>` : ""}
+            <p class="reading ${latestGlucoseTone}">${view.latest.sgv} <span class="reading-unit">mg/dL</span> <span class="direction-arrow ${latestDirectionTone}">${escapeHtml(extendedDirection ? copy.noData : latestDirection)}</span></p>
+            ${latestDelta ? `<div class="reading-change"><p class="metric-label">${copy.readingChange}</p><p class="reading-delta ${latestDeltaTone}">${latestDelta}</p></div>` : ""}
           </div>
           <div class="pill-stack">
-            <p class="reading-meta">${copy.readingAge}: ${latestAge}</p>
+            <p class="reading-meta">${copy.readingAge}: <span>${latestAge}</span></p>
           </div>
         </div>
-        <p class="freshness">${readingStatus}</p>
+        <div class="reading-state"><p class="freshness">${readingStatus}</p></div>
         ${extendedDirection ? `<details id="direction-details"><summary id="direction-summary">${copy.direction}</summary><p>${escapeHtml(latestDirection)}</p></details>` : ""}
         <p class="disclaimer">${copy.disclaimer}</p>
       </section>
@@ -476,8 +463,9 @@ export function renderHealthPage(view: HealthViewModel, locale: HealthLocale = "
     ? `
       <section id="latest-treatment" class="panel treatment-panel">
         <div class="panel-header">
-          <p class="eyebrow">${copy.treatment}</p>
+          <span class="panel-index" aria-hidden="true">02</span>
           <h2>${copy.latestTreatment}</h2>
+          <span class="panel-category">${copy.treatment}</span>
         </div>
         <div class="reading-row">
           <p class="reading treatment-reading">${
@@ -486,7 +474,7 @@ export function renderHealthPage(view: HealthViewModel, locale: HealthLocale = "
             : `<span>${copy.noInsulin}</span>`
         }</p>
           <div class="pill-stack">
-            <p class="pill">${copy.treatmentAge}: ${latestTreatmentAge}</p>
+            <p class="pill">${copy.treatmentAge}: <span>${latestTreatmentAge}</span></p>
           </div>
         </div>
         <p class="treatment-type">${escapeHtml(treatmentSummaryType)}</p>
@@ -515,101 +503,147 @@ export function renderHealthPage(view: HealthViewModel, locale: HealthLocale = "
     <title>${pageTitle}</title>
     <style>
       :root {
-        color-scheme: light;
-        --text: #183344;
-        --muted: #506474;
-        --line: #dce5e9;
-        --blue: #145fa8;
-        --green: #16734b;
-        --gold: #8b570c;
+        color-scheme: dark;
+        --background: #0b1016;
+        --surface: #111922;
+        --raised: #172330;
+        --text: #e6edf3;
+        --muted: #a0adba;
+        --line: #2a3949;
+        --control-line: #64788e;
+        --blue: #8ac8ff;
+        --green: #8be0b4;
+        --gold: #f0c779;
+        --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
         font-size: 16px;
       }
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        padding: 24px 16px;
-        background: #f3f6f7;
+        padding: 40px 24px 32px;
+        background: var(--background);
         color: var(--text);
         font-family: "Segoe UI", "Helvetica Neue", sans-serif;
         line-height: 1.5;
       }
-      main { max-width: 720px; margin: 0 auto; }
+      main { max-width: 960px; margin: 0 auto; }
       h1, h2, h3, p { margin: 0; }
-      h2 { font-size: 1rem; font-weight: 650; letter-spacing: -0.01em; }
-      h3 { font-size: 1rem; margin: 16px 0 8px; }
+      h2 { font-size: 1rem; font-weight: 600; letter-spacing: -0.015em; }
+      h3 { font-size: 0.875rem; margin: 24px 0 12px; }
       p, code, time, li { overflow-wrap: anywhere; }
-      .brand-bar { margin-bottom: 16px; }
+      .brand-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
       .brand-lockup { display: flex; align-items: center; gap: 12px; }
-      .brand-mark { font-size: 1.25rem; font-weight: 750; letter-spacing: -0.04em; }
+      .brand-icon { display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid var(--control-line); border-radius: 6px; color: var(--blue); }
+      .brand-icon svg { width: 24px; height: 24px; }
+      .brand-mark { font-size: 1.25rem; font-weight: 650; letter-spacing: -0.05em; line-height: 1.2; }
       .brand-mark span { color: var(--blue); }
-      .brand-mark small { font-size: 0.7rem; letter-spacing: 0.08em; color: var(--muted); margin-left: 8px; }
-      .brand-mark-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
-      .layout { display: grid; gap: 12px; }
-      .panel { padding: 20px; border: 1px solid var(--line); border-radius: 16px; background: #fff; min-width: 0; }
-      .panel-header { margin-bottom: 12px; }
-      .eyebrow { display: none; }
-      .reading-panel { border-top: 3px solid var(--blue); }
-      .reading-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
-      .reading-value-group { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
-      .reading { font-size: clamp(2.5rem, 7vw, 3.25rem); font-weight: 750; line-height: 1.1; letter-spacing: -0.04em; }
-      .reading span { font-size: 0.85rem; font-weight: 550; letter-spacing: 0; }
-      .reading .direction-arrow { font-size: 1.75rem; }
-      .reading-delta { font-size: 1rem; font-weight: 650; }
+      .brand-caption { margin-top: 3px; color: var(--muted); font-size: 0.75rem; }
+      .service-badge { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 0.75rem; color: var(--muted); }
+      .brand-mark-dot { width: 6px; height: 6px; flex: 0 0 auto; border-radius: 50%; background: var(--green); }
+      .layout { border: 1px solid var(--line); border-top: 2px solid var(--blue); border-radius: 6px 6px 0 0; overflow: clip; }
+      .panel { padding: 24px 28px; background: var(--surface); min-width: 0; }
+      .layout > .panel + .panel { border-top: 1px solid var(--line); }
+      .panel-header { display: flex; align-items: baseline; gap: 14px; margin-bottom: 20px; }
+      .eyebrow { font-family: var(--mono); font-size: 0.6875rem; color: var(--muted); }
+      .panel-header .eyebrow { min-width: 20px; }
+      .panel-index { color: var(--muted); font-family: var(--mono); font-size: 0.6875rem; font-weight: 400; }
+      .panel-category { margin-left: auto; font: 0.6875rem var(--mono); color: var(--muted); }
+      .reading-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px 32px; }
+      .reading-value-group { display: flex; flex-wrap: wrap; gap: 16px 32px; align-items: center; }
+      .reading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: clamp(4rem, 9vw, 6rem); font-weight: 500; line-height: 1; letter-spacing: -0.065em; }
+      .reading span { font-size: 0.875rem; font-weight: 400; letter-spacing: 0; }
+      .reading .direction-arrow { font-size: 2.25rem; line-height: 1; }
+      .reading-unit { color: var(--muted); }
+      .reading-change { border-left: 1px solid var(--line); padding-left: 24px; }
+      .metric-label { margin-bottom: 6px; color: var(--muted); font-size: 0.75rem; }
+      .reading-delta { font-family: var(--mono); font-size: 1.375rem; font-variant-numeric: tabular-nums; }
       .is-range, .is-flat, .is-down { color: var(--green); }
       .is-low, .is-high { color: var(--gold); }
       .is-up { color: var(--blue); }
       .is-muted, .is-neutral { color: var(--muted); }
       .pill-stack { min-width: 0; }
-      .reading-meta, .pill { color: var(--muted); font-size: 0.875rem; }
-      .freshness { margin-top: 12px; font-size: 0.875rem; font-weight: 650; }
-      .disclaimer { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 0.75rem; color: var(--muted); }
-      .treatment-panel { border-left: 3px solid var(--blue); }
-      .treatment-reading { font-size: 1.75rem; }
-      .treatment-type { margin-top: 8px; font-weight: 650; }
-      .treatment-date { margin-top: 8px; font-size: 0.875rem; color: var(--muted); }
-      .treatment-details { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
-      .detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-      .detail-line { font-size: 0.875rem; }
-      .detail-line strong { font-weight: 650; }
-      .hint, .panel-copy, .repo-body { margin-top: 8px; color: var(--muted); font-size: 0.875rem; }
-      .future-warning { margin-top: 12px; padding: 12px; background: #fff4de; color: #704807; border-radius: 8px; font-size: 0.875rem; }
-      details { margin-top: 12px; }
-      summary { cursor: pointer; color: var(--blue); font-weight: 650; font-size: 0.875rem; min-height: 36px; padding: 8px 0; }
+      .reading-meta, .pill { color: var(--muted); font-size: 0.8125rem; }
+      .reading-meta span, .pill span { display: block; margin-top: 5px; color: var(--text); font-family: var(--mono); font-size: 0.875rem; }
+      .reading-state { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 24px; margin-top: 16px; }
+      .freshness { display: inline-flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--text); }
+      .freshness::before { content: ""; width: 5px; height: 5px; background: var(--blue); }
+      .disclaimer { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 0.75rem; color: var(--muted); }
+      .treatment-panel .panel-header { margin-bottom: 16px; }
+      .treatment-reading { font-size: 2.25rem; gap: 8px; }
+      .treatment-type { margin-top: 14px; font-weight: 600; font-size: 0.9375rem; }
+      .treatment-date { margin-top: 6px; font-size: 0.75rem; color: var(--muted); }
+      time { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+      .treatment-details { margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--line); }
+      .detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 32px; }
+      .detail-line { font-size: 0.8125rem; }
+      .detail-line strong { display: inline-block; margin-bottom: 6px; color: var(--muted); font-weight: 400; }
+      .treatment-details .detail-line { grid-column: 1 / -1; color: var(--muted); }
+      .hint, .panel-copy, .repo-body { margin-top: 8px; color: var(--muted); font-size: 0.8125rem; }
+      .reception-panel { font-size: 0.875rem; }
+      .reception-panel .panel-header { margin-bottom: 14px; }
+      .reception-summary-row { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px; }
+      .reception-summary-row .hint { margin-top: 0; font: 0.75rem var(--mono); }
+      .future-warning { margin-top: 16px; padding: 12px 16px; background: #2b2418; color: var(--gold); border-left: 2px solid var(--gold); font-size: 0.8125rem; }
+      details { margin-top: 16px; }
+      summary { cursor: pointer; color: var(--blue); font-size: 0.8125rem; min-height: 40px; padding: 10px 0; width: fit-content; max-width: 100%; }
+      summary::marker { font-size: 0.75rem; }
+      details[open] > summary { margin-bottom: 16px; }
       details > p, details > .detail-grid { margin-top: 12px; }
-      summary:hover { text-decoration: underline; text-underline-offset: 3px; }
-      .status-panel { margin-top: 12px; background: #eef3f5; }
-      .status-panel-top { display: none; }
-      .status-actions { margin-bottom: 16px; }
-      .status-label { font-size: 0.875rem; font-weight: 650; }
-      .repo-title { display: none; }
-      .repo-link { display: inline-block; margin-top: 12px; }
-      .setup { background: #eef6ff; border-color: #bdd4e9; }
-      .setup-ready { background: #f0faf4; border-color: #bddcc9; }
-      code { display: block; margin-top: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: #f6f8f9; color: var(--text); white-space: pre-wrap; font-size: 0.875rem; }
-      button { margin-top: 16px; padding: 12px 16px; border: 0; border-radius: 8px; background: var(--blue); color: #fff; font: inherit; font-weight: 650; cursor: pointer; }
-      a { color: var(--blue); font-weight: 650; text-underline-offset: 3px; }
-      :focus-visible { outline: 3px solid var(--blue); outline-offset: 4px; border-radius: 4px; }
-      ul { margin: 8px 0; padding-left: 20px; font-size: 0.875rem; }
-      @media (max-width: 720px) {
-        body { padding: 16px 12px; }
-        .panel { padding: 16px; }
+      summary:hover, a:hover { color: #baddff; text-decoration: underline; text-underline-offset: 4px; }
+      .status-panel { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 20px 32px; border: 1px solid var(--line); border-top: 0; border-radius: 0 0 6px 6px; background: transparent; }
+      .service-copy { max-width: 600px; flex: 1 1 360px; }
+      .status-label { font-size: 0.75rem; font-weight: 600; color: var(--text); }
+      .status-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding-top: 1px; }
+      .status-link { font-size: 0.75rem; }
+      .setup { background: var(--raised); }
+      .setup-ready { border-left: 2px solid var(--green); }
+      code { display: block; margin-top: 12px; padding: 12px 16px; border: 1px solid var(--control-line); border-radius: 4px; background: var(--background); color: var(--text); white-space: pre-wrap; font: 0.8125rem/1.6 var(--mono); }
+      button { margin-top: 16px; padding: 12px 20px; border: 1px solid var(--blue); border-radius: 4px; background: var(--blue); color: var(--background); font: inherit; font-size: 0.875rem; font-weight: 600; cursor: pointer; }
+      button:hover { background: #baddff; }
+      a { color: var(--blue); text-underline-offset: 4px; }
+      :focus-visible { outline: 2px solid var(--blue); outline-offset: 5px; border-radius: 2px; }
+      ul { margin: 8px 0; padding-left: 20px; font-size: 0.8125rem; }
+      @media (max-width: 600px) {
+        body { padding: 20px 12px 24px; }
+        .brand-bar { gap: 12px; margin-bottom: 20px; }
+        .brand-icon { width: 32px; height: 32px; }
+        .brand-icon svg { width: 20px; height: 20px; }
+        .brand-lockup { gap: 8px; }
+        .brand-mark { font-size: 1.125rem; }
+        .brand-caption { font-size: 0.6875rem; }
+        .service-badge { font-size: 0.625rem; gap: 5px; }
+        .panel { padding: 20px 16px; }
+        .panel-header { margin-bottom: 20px; gap: 10px; }
+        .panel-category { display: none; }
+        .reading { font-size: 4rem; gap: 8px; }
+        .reading .direction-arrow { font-size: 1.75rem; }
+        .reading-row { gap: 16px; }
+        .reading-value-group { width: 100%; justify-content: space-between; gap: 12px; }
+        .reading-change { padding-left: 16px; }
+        .reading-delta { font-size: 1.125rem; }
+        .reading-panel .pill-stack { width: 100%; }
+        .reading-meta span, .pill span { display: inline; margin: 0 0 0 4px; font-size: 0.75rem; }
+        .reading-state { margin-top: 12px; }
+        .disclaimer { margin-top: 16px; padding-top: 12px; }
+        .treatment-reading { font-size: 2rem; }
         .detail-grid { grid-template-columns: 1fr; }
+        .treatment-panel .pill-stack { flex: 1 1 190px; }
+        .pill span { white-space: nowrap; }
+        .treatment-type { margin-top: 12px; }
+        .status-panel { gap: 16px; }
+        .status-actions { flex-direction: row; flex-wrap: wrap; gap: 12px 24px; }
       }
     </style>
   </head>
   <body>
     <main>
-      <div class="brand-bar">
+      <header class="brand-bar">
         <div class="brand-lockup">
-          <span
-            class="brand-mark-dot is-${serviceState.tone}"
-            role="img"
-            aria-label="${serviceState.label}"
-            title="${serviceState.label}"
-          ></span>
-          <h1 class="brand-mark">Gluco<span>Easy</span> <small>CGM</small></h1>
+          <span class="brand-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h5l3-7 3 14 3-7h4" /></svg></span>
+          <div><h1 class="brand-mark">Gluco<span>Easy</span></h1><p class="brand-caption">${copy.backupMonitor}</p></div>
         </div>
-      </div>
+        <p class="service-badge"><span class="brand-mark-dot is-${serviceState.tone}" aria-hidden="true"></span>${serviceState.label}</p>
+      </header>
       <div class="layout">
         ${setupBlock}
         ${latestBlock}
@@ -617,24 +651,12 @@ export function renderHealthPage(view: HealthViewModel, locale: HealthLocale = "
         ${receptionBlock}
       </div>
       <section id="service-info" class="panel status-panel">
-        <div class="status-panel-top">
-          <div class="status-heading">
-            <p class="eyebrow">${copy.system}</p>
-            <div class="status-title-row">
-              <p class="system-name">${copy.title}</p>
-              <div class="status-badge">${copy.status}</div>
-            </div>
-          </div>
+        <div class="service-copy">
+          <h2 class="status-label">${copy.openSource}</h2>
+          <p class="repo-body">${copy.openSourceBody}</p>
         </div>
         <div class="status-actions">
           <a id="status-link" class="status-link" href="/api/v1/status.json">${copy.viewStatusJson}</a>
-        </div>
-        <div class="status-card repo-card">
-          <div class="repo-copy">
-            <p class="status-label">${copy.openSource}</p>
-            <p class="repo-title">${locale === "es" ? "Código de GlucoEasy" : "GlucoEasy source code"}</p>
-            <p class="repo-body">${copy.openSourceBody}</p>
-          </div>
           <a id="repository-link" class="status-link repo-link" href="https://github.com/HankScorpi0/GlucoEasy" target="_blank" rel="noopener noreferrer">${copy.viewRepository}</a>
         </div>
       </section>
